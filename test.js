@@ -37,9 +37,9 @@ test('returns values in the order they resolved', async t => {
 
 test('rejects with all errors if satisfying `count` becomes impossible', async t => {
 	const f = [
-		Promise.reject('foo'),
+		Promise.reject(new Error('foo')),
 		Promise.resolve(1),
-		Promise.reject('bar'),
+		Promise.reject(new Error('bar')),
 		Promise.resolve(2)
 	];
 	const err = await t.throws(m(f, 3), m.AggregateError);
@@ -50,9 +50,9 @@ test('rejects with all errors if satisfying `count` becomes impossible', async t
 
 test('rejects with all errors if satisfying `count` becomes impossible #2', async t => {
 	const f = [
-		Promise.reject('foo'),
+		Promise.reject(new Error('foo')),
 		Promise.resolve(1),
-		Promise.reject('bar'),
+		Promise.reject(new Error('bar')),
 		Promise.resolve(2)
 	];
 	const err = await t.throws(m(f, 4), m.AggregateError);
@@ -63,9 +63,9 @@ test('rejects with all errors if satisfying `count` becomes impossible #2', asyn
 
 test('returns an array of values', async t => {
 	const f = [
-		Promise.reject(1),
+		Promise.reject(new Error(1)),
 		Promise.resolve(2),
-		Promise.reject(3),
+		Promise.reject(new Error(3)),
 		Promise.resolve(4)
 	];
 	t.deepEqual(await m(f, 2), [2, 4]);
@@ -75,9 +75,9 @@ test('returns an array of values #2', async t => {
 	const f = () => [
 		Promise.resolve(1),
 		Promise.resolve(2),
-		Promise.reject(3),
+		Promise.reject(new Error(3)),
 		Promise.resolve(4),
-		Promise.reject(5)
+		Promise.reject(new Error(5))
 	];
 	t.deepEqual(await m(f(), 1), [1]);
 	t.deepEqual(await m(f(), 2), [1, 2]);
