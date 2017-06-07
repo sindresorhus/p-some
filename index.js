@@ -12,6 +12,7 @@ module.exports = (iterable, opts) => new Promise((resolve, reject) => {
 	const errors = [];
 	let elCount = 0;
 	let maxErrors = -opts.count + 1;
+	let maxFiltered = -opts.count + 1;
 	let done = false;
 
 	const fulfilled = value => {
@@ -20,6 +21,11 @@ module.exports = (iterable, opts) => new Promise((resolve, reject) => {
 		}
 
 		if (typeof opts.filter === 'function' && !opts.filter(value)) {
+			if (--maxFiltered === 0) {
+				done = true;
+				reject(new RangeError(`Not enough values pass the \`filter\` option`));
+			}
+
 			return;
 		}
 
@@ -46,6 +52,7 @@ module.exports = (iterable, opts) => new Promise((resolve, reject) => {
 
 	for (const el of iterable) {
 		maxErrors++;
+		maxFiltered++;
 		elCount++;
 		Promise.resolve(el).then(fulfilled, rejected);
 	}

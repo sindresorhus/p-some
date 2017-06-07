@@ -84,7 +84,7 @@ test('returns an array of values #2', async t => {
 	t.deepEqual(await m(f(), {count: 3}), [1, 2, 4]);
 });
 
-test('only returns values that passes filter function', async t => {
+test('only returns values that passes `filter` option', async t => {
 	const f = [
 		'foo',
 		Promise.resolve(1),
@@ -93,4 +93,15 @@ test('only returns values that passes filter function', async t => {
 	];
 	t.deepEqual(await m(f, {count: 1, filter: val => typeof val === 'number'}), [1]);
 	t.deepEqual(await m(f, {count: 2, filter: val => typeof val === 'number'}), [1, 2]);
+});
+
+test('reject with RangeError when values returned from `filter` option doesn\'t match `count`', async t => {
+	const f = [
+		'foo',
+		Promise.resolve(1),
+		Promise.resolve('foo'),
+		2
+	];
+	const err = await t.throws(m(f, {count: 3, filter: val => typeof val === 'number'}), RangeError);
+	t.is(err.message, 'Not enough values pass the `filter` option');
 });
