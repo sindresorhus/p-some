@@ -34,7 +34,7 @@ pSome([
 
 ## API
 
-### pSome(input, count)
+### pSome(input, options)
 
 Returns a `Promise` that is fulfilled when `count` promises from `input` are fulfilled. The fulfilled value is an `Array` of the values from the `input` promises in the order they were fulfilled. If it becomes impossible to satisfy `count`, for example, too many promises rejected, it will reject with an [`AggregateError`](https://github.com/sindresorhus/aggregate-error) error.
 
@@ -42,9 +42,20 @@ Returns a `Promise` that is fulfilled when `count` promises from `input` are ful
 
 Type: `Iterable<Promise|any>`
 
-#### count
+#### options
 
+Type: `Object`
+
+##### count
+
+*Required*<br>
 Type: `number` *(minimum `1`)*
+
+##### filter
+
+Type: `Function`
+
+Receives the value resolved by the promise. Used to filter out values that doesn't satisfy a condition.
 
 ### pSome.AggregateError
 
