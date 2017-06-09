@@ -1,15 +1,18 @@
 'use strict';
 const AggregateError = require('aggregate-error');
 
-module.exports = (iterable, count) => new Promise((resolve, reject) => {
-	if (!Number.isFinite(count)) {
-		throw new TypeError(`Expected a finite number, got ${typeof count}`);
+module.exports = (iterable, opts) => new Promise((resolve, reject) => {
+	opts = Object.assign({}, opts);
+
+	if (!Number.isFinite(opts.count)) {
+		throw new TypeError(`Expected a finite number, got ${typeof opts.count}`);
 	}
 
 	const values = [];
 	const errors = [];
 	let elCount = 0;
-	let maxErrors = -count + 1;
+	let maxErrors = -opts.count + 1;
+	let maxFiltered = -opts.count + 1;
 	let done = false;
 
 	const fulfilled = value => {
@@ -17,9 +20,18 @@ module.exports = (iterable, count) => new Promise((resolve, reject) => {
 			return;
 		}
 
+		if (typeof opts.filter === 'function' && !opts.filter(value)) {
+			if (--maxFiltered === 0) {
+				done = true;
+				reject(new RangeError(`Not enough values pass the \`filter\` option`));
+			}
+
+			return;
+		}
+
 		values.push(value);
 
-		if (--count === 0) {
+		if (--opts.count === 0) {
 			done = true;
 			resolve(values);
 		}
@@ -40,12 +52,13 @@ module.exports = (iterable, count) => new Promise((resolve, reject) => {
 
 	for (const el of iterable) {
 		maxErrors++;
+		maxFiltered++;
 		elCount++;
 		Promise.resolve(el).then(fulfilled, rejected);
 	}
 
-	if (count > elCount) {
-		throw new RangeError(`Expected input to contain at least ${count} items, but contains ${elCount} items`);
+	if (opts.count > elCount) {
+		throw new RangeError(`Expected input to contain at least ${opts.count} items, but contains ${elCount} items`);
 	}
 });
 
