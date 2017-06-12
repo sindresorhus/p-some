@@ -1,6 +1,6 @@
 import test from 'ava';
 import delay from 'delay';
-import m from './';
+import m from '.';
 
 test('reject with RangeError when fulfillment is impossible', async t => {
 	await t.throws(m([], {count: 1}), RangeError);
@@ -24,17 +24,6 @@ test('works with promises', async t => {
 	t.deepEqual(await m(f(), {count: 1}), [1]);
 	t.deepEqual(await m(f(), {count: 2}), [1, 2]);
 	t.deepEqual(await m(f(), {count: 3}), [1, 2, 3]);
-});
-
-test('works with promises - temp', async t => {
-	const f = () => [
-		Promise.resolve(1),
-		Promise.resolve(2),
-		Promise.resolve(3)
-	];
-	t.deepEqual(await m(f(), 1), [1]);
-	t.deepEqual(await m(f(), 2), [1, 2]);
-	t.deepEqual(await m(f(), 3), [1, 2, 3]);
 });
 
 test('returns values in the order they resolved', async t => {
