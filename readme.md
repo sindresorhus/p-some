@@ -8,7 +8,7 @@ Useful when you need the fastest of multiple promises.
 ## Install
 
 ```
-$ npm install --save p-some
+$ npm install p-some
 ```
 
 
