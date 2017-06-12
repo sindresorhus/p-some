@@ -2,6 +2,12 @@
 const AggregateError = require('aggregate-error');
 
 module.exports = (iterable, opts) => new Promise((resolve, reject) => {
+	if (typeof opts === 'number') {
+		opts = {
+			count: opts
+		};
+	}
+
 	opts = Object.assign({}, opts);
 
 	if (!Number.isFinite(opts.count)) {

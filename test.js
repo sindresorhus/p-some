@@ -26,6 +26,17 @@ test('works with promises', async t => {
 	t.deepEqual(await m(f(), {count: 3}), [1, 2, 3]);
 });
 
+test('works with promises - temp', async t => {
+	const f = () => [
+		Promise.resolve(1),
+		Promise.resolve(2),
+		Promise.resolve(3)
+	];
+	t.deepEqual(await m(f(), 1), [1]);
+	t.deepEqual(await m(f(), 2), [1, 2]);
+	t.deepEqual(await m(f(), 3), [1, 2, 3]);
+});
+
 test('returns values in the order they resolved', async t => {
 	const f = [
 		Promise.resolve(1).then(delay(100)),
