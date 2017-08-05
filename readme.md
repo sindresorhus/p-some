@@ -25,7 +25,7 @@ pSome([
 	got.head('google.com').then(() => 'google'),
 	got.head('twitter.com').then(() => 'twitter'),
 	got.head('medium.com').then(() => 'medium')
-], 2).then(([first, second]) => {
+], {count: 2}).then(([first, second]) => {
 	console.log(first, second);
 	//=> 'google twitter'
 });
