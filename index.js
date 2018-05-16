@@ -1,7 +1,8 @@
 'use strict';
 const AggregateError = require('aggregate-error');
+const PCancelable = require('p-cancelable');
 
-module.exports = (iterable, opts) => new Promise((resolve, reject) => {
+module.exports = (iterable, opts) => new PCancelable((resolve, reject, onCancel) => {
 	opts = Object.assign({}, opts);
 
 	if (!Number.isFinite(opts.count)) {
@@ -10,10 +11,26 @@ module.exports = (iterable, opts) => new Promise((resolve, reject) => {
 
 	const values = [];
 	const errors = [];
+	const completed = [];
 	let elCount = 0;
 	let maxErrors = -opts.count + 1;
 	let maxFiltered = -opts.count + 1;
 	let done = false;
+
+	const cancelPendingIfDone = () => {
+		if (done) {
+			iterable.forEach(promise => {
+				if (!completed.indexOf(promise) !== -1 && typeof promise.cancel === 'function') {
+					promise.cancel();
+				}
+			});
+		}
+	};
+
+	onCancel(() => {
+		done = true;
+		cancelPendingIfDone();
+	});
 
 	const fulfilled = value => {
 		if (done) {
@@ -54,7 +71,15 @@ module.exports = (iterable, opts) => new Promise((resolve, reject) => {
 		maxErrors++;
 		maxFiltered++;
 		elCount++;
-		Promise.resolve(el).then(fulfilled, rejected);
+		Promise.resolve(el).then(value => {
+			fulfilled(value);
+			completed.push(el);
+			cancelPendingIfDone();
+		}, error => {
+			rejected(error);
+			completed.push(el);
+			cancelPendingIfDone();
+		});
 	}
 
 	if (opts.count > elCount) {
