@@ -2,28 +2,30 @@
 const AggregateError = require('aggregate-error');
 const PCancelable = require('p-cancelable');
 
-module.exports = (iterable, opts) => new PCancelable((resolve, reject, onCancel) => {
-	opts = Object.assign({}, opts);
+module.exports = (iterable, options) => new PCancelable((resolve, reject, onCancel) => {
+	options = Object.assign({}, options);
 
-	if (!Number.isFinite(opts.count)) {
-		throw new TypeError(`Expected a finite number, got ${typeof opts.count}`);
+	if (!Number.isFinite(options.count)) {
+		throw new TypeError(`Expected a finite number, got ${typeof options.count}`);
 	}
 
 	const values = [];
 	const errors = [];
-	const completed = [];
 	let elCount = 0;
-	let maxErrors = -opts.count + 1;
-	let maxFiltered = -opts.count + 1;
+	let maxErrors = -options.count + 1;
+	let maxFiltered = -options.count + 1;
 	let done = false;
 
+	const completed = new Set();
 	const cancelPendingIfDone = () => {
-		if (done) {
-			iterable.forEach(promise => {
-				if (!completed.indexOf(promise) !== -1 && typeof promise.cancel === 'function') {
-					promise.cancel();
-				}
-			});
+		if (!done) {
+			return;
+		}
+
+		for (const promise of iterable) {
+			if (!completed.has(promise) && typeof promise.cancel === 'function') {
+				promise.cancel();
+			}
 		}
 	};
 
@@ -37,7 +39,7 @@ module.exports = (iterable, opts) => new PCancelable((resolve, reject, onCancel)
 			return;
 		}
 
-		if (typeof opts.filter === 'function' && !opts.filter(value)) {
+		if (typeof options.filter === 'function' && !options.filter(value)) {
 			if (--maxFiltered === 0) {
 				done = true;
 				reject(new RangeError(`Not enough values pass the \`filter\` option`));
@@ -48,7 +50,7 @@ module.exports = (iterable, opts) => new PCancelable((resolve, reject, onCancel)
 
 		values.push(value);
 
-		if (--opts.count === 0) {
+		if (--options.count === 0) {
 			done = true;
 			resolve(values);
 		}
@@ -71,19 +73,23 @@ module.exports = (iterable, opts) => new PCancelable((resolve, reject, onCancel)
 		maxErrors++;
 		maxFiltered++;
 		elCount++;
-		Promise.resolve(el).then(value => {
-			fulfilled(value);
-			completed.push(el);
-			cancelPendingIfDone();
-		}, error => {
-			rejected(error);
-			completed.push(el);
-			cancelPendingIfDone();
-		});
+
+		Promise.resolve(el).then(
+			value => {
+				fulfilled(value);
+				completed.add(el);
+				cancelPendingIfDone();
+			},
+			error => {
+				rejected(error);
+				completed.add(el);
+				cancelPendingIfDone();
+			}
+		);
 	}
 
-	if (opts.count > elCount) {
-		throw new RangeError(`Expected input to contain at least ${opts.count} items, but contains ${elCount} items`);
+	if (options.count > elCount) {
+		throw new RangeError(`Expected input to contain at least ${options.count} items, but contains ${elCount} items`);
 	}
 });
 

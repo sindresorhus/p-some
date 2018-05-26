@@ -38,7 +38,7 @@ pSome([
 
 Returns a cancelable `Promise` that is fulfilled when `count` promises from `input` are fulfilled. The fulfilled value is an `Array` of the values from the `input` promises in the order they were fulfilled. If it becomes impossible to satisfy `count`, for example, too many promises rejected, it will reject with an [`AggregateError`](https://github.com/sindresorhus/aggregate-error) error.
 
-If you pass in cancelable promises, specifically promises with a .cancel() method, that method will be called for the promises that are still unfulfilled when `Promise` is either fulfilled or rejected.
+If you pass in cancelable promises, specifically promises with a `.cancel()` method, that method will be called for the promises that are still unfulfilled when the returned `Promise` is either fulfilled or rejected.
 
 #### input
 

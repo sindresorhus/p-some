@@ -29,9 +29,9 @@ test('works with promises', async t => {
 
 test('returns values in the order they resolved', async t => {
 	const f = [
-		Promise.resolve(1).then(delay(100)),
+		delay(100, 1),
 		Promise.resolve(2),
-		Promise.resolve(3).then(delay(50))
+		delay(50, 3)
 	];
 	t.deepEqual(await m(f, {count: 3}), [2, 3, 1]);
 });
@@ -126,9 +126,9 @@ test('cancels pending promises when cancel is called', async t => {
 test('can handle non-cancelable promises', async t => {
 	const f = [
 		new PCancelable(resolve => resolve(1)),
-		Promise.resolve(2).then(delay(100)),
+		delay(100, 2),
 		new PCancelable(resolve => delay(10, 2).then(resolve)),
-		Promise.resolve(4).then(delay(200))
+		delay(200, 4)
 	];
 	t.deepEqual(await m(f, {count: 1}), [1]);
 	t.is(await f[1], 2);
