@@ -42,7 +42,7 @@ module.exports = (iterable, options) => new PCancelable((resolve, reject, onCanc
 		if (typeof options.filter === 'function' && !options.filter(value)) {
 			if (--maxFiltered === 0) {
 				done = true;
-				reject(new RangeError(`Not enough values pass the \`filter\` option`));
+				reject(new RangeError('Not enough values pass the `filter` option'));
 			}
 
 			return;
@@ -65,7 +65,7 @@ module.exports = (iterable, options) => new PCancelable((resolve, reject, onCanc
 
 		if (--maxErrors === 0) {
 			done = true;
-			const isNode = typeof process !== 'undefined' && process.versions != null && process.versions.node != null;
+			const isNode = typeof process !== 'undefined' && process.versions !== null && process.versions.node !== null;
 			reject(isNode ? new AggregateError(errors) : new Error(errors));
 		}
 	};
