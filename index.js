@@ -65,7 +65,8 @@ module.exports = (iterable, options) => new PCancelable((resolve, reject, onCanc
 
 		if (--maxErrors === 0) {
 			done = true;
-			reject(new AggregateError(errors));
+			const isNode = typeof process !== 'undefined' && process.versions != null && process.versions.node != null;
+			reject(isNode ? new AggregateError(errors) : new Error(errors));
 		}
 	};
 
