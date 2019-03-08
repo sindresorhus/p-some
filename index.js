@@ -3,7 +3,7 @@ const AggregateError = require('aggregate-error');
 const PCancelable = require('p-cancelable');
 
 const pSome = (iterable, options) => new PCancelable((resolve, reject, onCancel) => {
-	options = Object.assign({}, options);
+	options = {filter: () => true, ...options};
 
 	if (!Number.isFinite(options.count)) {
 		throw new TypeError(`Expected a finite number, got ${typeof options.count}`);
@@ -39,7 +39,7 @@ const pSome = (iterable, options) => new PCancelable((resolve, reject, onCancel)
 			return;
 		}
 
-		if (typeof options.filter === 'function' && !options.filter(value)) {
+		if (!options.filter(value)) {
 			if (--maxFiltered === 0) {
 				done = true;
 				reject(new RangeError('Not enough values pass the `filter` option'));
@@ -74,18 +74,17 @@ const pSome = (iterable, options) => new PCancelable((resolve, reject, onCancel)
 		maxFiltered++;
 		elCount++;
 
-		Promise.resolve(el).then(
-			value => {
+		(async () => {
+			try {
+				const value = await Promise.resolve(el);
 				fulfilled(value);
-				completed.add(el);
-				cancelPendingIfDone();
-			},
-			error => {
+			} catch (error) {
 				rejected(error);
-				completed.add(el);
-				cancelPendingIfDone();
 			}
-		);
+
+			completed.add(el);
+			cancelPendingIfDone();
+		})();
 	}
 
 	if (options.count > elCount) {

@@ -111,8 +111,14 @@ test('cancels pending promises when cancel is called', async t => {
 	const f = [
 		new PCancelable(resolve => resolve(1)),
 		new PCancelable(resolve => resolve(2)),
-		new PCancelable(resolve => delay(10, {value: 2}).then(resolve)),
-		new PCancelable(resolve => delay(100, {value: 4}).then(resolve))
+		new PCancelable(async resolve => {
+			await delay(10);
+			resolve(2);
+		}),
+		new PCancelable(async resolve => {
+			await delay(100);
+			resolve(4);
+		})
 	];
 	const p = pSome(f, {count: 4});
 	p.cancel();
@@ -127,7 +133,10 @@ test('can handle non-cancelable promises', async t => {
 	const f = [
 		new PCancelable(resolve => resolve(1)),
 		delay(100, {value: 2}),
-		new PCancelable(resolve => delay(10, {value: 2}).then(resolve)),
+		new PCancelable(async resolve => {
+			await delay(10);
+			resolve(2);
+		}),
 		delay(200, {value: 4})
 	];
 	t.deepEqual(await pSome(f, {count: 1}), [1]);
@@ -139,9 +148,18 @@ test('can handle non-cancelable promises', async t => {
 test('cancels pending promises when count is reached', async t => {
 	const f = [
 		new PCancelable(resolve => resolve(1)),
-		new PCancelable(resolve => delay(50, {value: 2}).then(resolve)),
-		new PCancelable(resolve => delay(100, {value: 3}).then(resolve)),
-		new PCancelable(resolve => delay(200, {value: 4}).then(resolve))
+		new PCancelable(async resolve => {
+			await delay(50);
+			resolve(2);
+		}),
+		new PCancelable(async resolve => {
+			await delay(100);
+			resolve(3);
+		}),
+		new PCancelable(async resolve => {
+			await delay(200);
+			resolve(4);
+		})
 	];
 	t.deepEqual(await pSome(f, {count: 2}), [1, 2]);
 	await t.throwsAsync(f[2], PCancelable.CancelError);
@@ -151,9 +169,18 @@ test('cancels pending promises when count is reached', async t => {
 test('cancels pending promises if satisfying `count` becomes impossible', async t => {
 	const f = [
 		new PCancelable((_, reject) => reject(new Error('foo'))),
-		new PCancelable((_, reject) => delay(10, {value: new Error('bar')}).then(reject)),
-		new PCancelable((_, reject) => delay(200, {value: new Error('baz')}).then(reject)),
-		new PCancelable((_, reject) => delay(300, {value: new Error('qux')}).then(reject))
+		new PCancelable(async (_, reject) => {
+			await delay(10);
+			reject(new Error('bar'));
+		}),
+		new PCancelable(async (_, reject) => {
+			await delay(200);
+			reject(new Error('baz'));
+		}),
+		new PCancelable(async (_, reject) => {
+			await delay(300);
+			reject(new Error('qux'));
+		})
 	];
 	const err = await t.throwsAsync(pSome(f, {count: 3}, pSome.AggregateError));
 	const items = [...err];
