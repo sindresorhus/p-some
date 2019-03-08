@@ -14,14 +14,14 @@ const pSome = (iterable, options) => new PCancelable((resolve, reject, onCancel)
 
 	const values = [];
 	const errors = [];
-	let elCount = 0;
+	let elementCount = 0;
 	let maxErrors = -options.count + 1;
 	let maxFiltered = -options.count + 1;
-	let done = false;
+	let isDone = false;
 
 	const completed = new Set();
 	const cancelPendingIfDone = () => {
-		if (!done) {
+		if (!isDone) {
 			return;
 		}
 
@@ -33,18 +33,18 @@ const pSome = (iterable, options) => new PCancelable((resolve, reject, onCancel)
 	};
 
 	onCancel(() => {
-		done = true;
+		isDone = true;
 		cancelPendingIfDone();
 	});
 
 	const fulfilled = value => {
-		if (done) {
+		if (isDone) {
 			return;
 		}
 
 		if (!options.filter(value)) {
 			if (--maxFiltered === 0) {
-				done = true;
+				isDone = true;
 				reject(new RangeError('Not enough values pass the `filter` option'));
 			}
 
@@ -54,44 +54,44 @@ const pSome = (iterable, options) => new PCancelable((resolve, reject, onCancel)
 		values.push(value);
 
 		if (--options.count === 0) {
-			done = true;
+			isDone = true;
 			resolve(values);
 		}
 	};
 
 	const rejected = error => {
-		if (done) {
+		if (isDone) {
 			return;
 		}
 
 		errors.push(error);
 
 		if (--maxErrors === 0) {
-			done = true;
+			isDone = true;
 			reject(new AggregateError(errors));
 		}
 	};
 
-	for (const el of iterable) {
+	for (const element of iterable) {
 		maxErrors++;
 		maxFiltered++;
-		elCount++;
+		elementCount++;
 
 		(async () => {
 			try {
-				const value = await Promise.resolve(el);
+				const value = await Promise.resolve(element);
 				fulfilled(value);
 			} catch (error) {
 				rejected(error);
 			}
 
-			completed.add(el);
+			completed.add(element);
 			cancelPendingIfDone();
 		})();
 	}
 
-	if (options.count > elCount) {
-		throw new RangeError(`Expected input to contain at least ${options.count} items, but contains ${elCount} items`);
+	if (options.count > elementCount) {
+		throw new RangeError(`Expected input to contain at least ${options.count} items, but contains ${elementCount} items`);
 	}
 });
 

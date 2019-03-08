@@ -20,15 +20,19 @@ Checks 4 websites and logs the 2 fastest.
 const got = require('got');
 const pSome = require('p-some');
 
-pSome([
-	got.head('github.com').then(() => 'github'),
-	got.head('google.com').then(() => 'google'),
-	got.head('twitter.com').then(() => 'twitter'),
-	got.head('medium.com').then(() => 'medium')
-], {count: 2}).then(([first, second]) => {
+(async () => {
+	const input = [
+		got.head('github.com').then(() => 'github'),
+		got.head('google.com').then(() => 'google'),
+		got.head('twitter.com').then(() => 'twitter'),
+		got.head('medium.com').then(() => 'medium')
+	];
+
+	const [first, second] = await pSome(input, {count: 2});
+
 	console.log(first, second);
 	//=> 'google twitter'
-});
+})();
 ```
 
 
