@@ -42,7 +42,7 @@ If you pass in cancelable promises, specifically promises with a `.cancel()` met
 
 #### input
 
-Type: `Iterable<Promise | any>`
+Type: `Iterable<Promise | unknown>`
 
 An `Iterable` collection of promises/values to wait for.
 

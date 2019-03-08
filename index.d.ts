@@ -1,7 +1,7 @@
-import AggregateErrorClass from 'aggregate-error';
 import PCancelable from 'p-cancelable';
 
 export type Value<T> = T | PromiseLike<T>;
+export type CancelablePromise<ValueType> = PCancelable<ValueType>;
 
 export interface Options<T> {
 	/**
@@ -26,6 +26,6 @@ export interface Options<T> {
 export default function pSome<T>(
 	values: Iterable<Value<T>>,
 	options: Options<T>
-): PCancelable<T[]>;
+): CancelablePromise<T[]>;
 
-export const AggregateError: typeof AggregateErrorClass;
+export {default as AggregateError} from 'aggregate-error';
