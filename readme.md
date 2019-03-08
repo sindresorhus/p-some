@@ -42,7 +42,9 @@ If you pass in cancelable promises, specifically promises with a `.cancel()` met
 
 #### input
 
-Type: `Iterable<Promise|any>`
+Type: `Iterable<Promise | unknown>`
+
+An `Iterable` collection of promises/values to wait for.
 
 #### options
 
@@ -51,7 +53,10 @@ Type: `Object`
 ##### count
 
 *Required*<br>
-Type: `number` *(minimum `1`)*
+Type: `number`<br>
+Minimum: `1`
+
+Number of promises from `input` that have to be fulfilled until the returned promise is fulfilled.
 
 ##### filter
 

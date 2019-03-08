@@ -2,8 +2,11 @@
 const AggregateError = require('aggregate-error');
 const PCancelable = require('p-cancelable');
 
-module.exports = (iterable, options) => new PCancelable((resolve, reject, onCancel) => {
-	options = Object.assign({}, options);
+const pSome = (iterable, options) => new PCancelable((resolve, reject, onCancel) => {
+	options = {
+		filter: () => true,
+		...options
+	};
 
 	if (!Number.isFinite(options.count)) {
 		throw new TypeError(`Expected a finite number, got ${typeof options.count}`);
@@ -39,10 +42,10 @@ module.exports = (iterable, options) => new PCancelable((resolve, reject, onCanc
 			return;
 		}
 
-		if (typeof options.filter === 'function' && !options.filter(value)) {
+		if (!options.filter(value)) {
 			if (--maxFiltered === 0) {
 				done = true;
-				reject(new RangeError(`Not enough values pass the \`filter\` option`));
+				reject(new RangeError('Not enough values pass the `filter` option'));
 			}
 
 			return;
@@ -74,23 +77,25 @@ module.exports = (iterable, options) => new PCancelable((resolve, reject, onCanc
 		maxFiltered++;
 		elCount++;
 
-		Promise.resolve(el).then(
-			value => {
+		(async () => {
+			try {
+				const value = await Promise.resolve(el);
 				fulfilled(value);
-				completed.add(el);
-				cancelPendingIfDone();
-			},
-			error => {
+			} catch (error) {
 				rejected(error);
-				completed.add(el);
-				cancelPendingIfDone();
 			}
-		);
+
+			completed.add(el);
+			cancelPendingIfDone();
+		})();
 	}
 
 	if (options.count > elCount) {
 		throw new RangeError(`Expected input to contain at least ${options.count} items, but contains ${elCount} items`);
 	}
 });
+
+module.exports = pSome;
+module.exports.default = pSome;
 
 module.exports.AggregateError = AggregateError;
