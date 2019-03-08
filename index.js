@@ -2,7 +2,7 @@
 const AggregateError = require('aggregate-error');
 const PCancelable = require('p-cancelable');
 
-module.exports = (iterable, options) => new PCancelable((resolve, reject, onCancel) => {
+const pSome = (iterable, options) => new PCancelable((resolve, reject, onCancel) => {
 	options = Object.assign({}, options);
 
 	if (!Number.isFinite(options.count)) {
@@ -42,7 +42,7 @@ module.exports = (iterable, options) => new PCancelable((resolve, reject, onCanc
 		if (typeof options.filter === 'function' && !options.filter(value)) {
 			if (--maxFiltered === 0) {
 				done = true;
-				reject(new RangeError(`Not enough values pass the \`filter\` option`));
+				reject(new RangeError('Not enough values pass the `filter` option'));
 			}
 
 			return;
@@ -92,5 +92,8 @@ module.exports = (iterable, options) => new PCancelable((resolve, reject, onCanc
 		throw new RangeError(`Expected input to contain at least ${options.count} items, but contains ${elCount} items`);
 	}
 });
+
+module.exports = pSome;
+module.exports.default = pSome;
 
 module.exports.AggregateError = AggregateError;
