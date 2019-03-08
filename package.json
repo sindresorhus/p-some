@@ -1,6 +1,6 @@
 {
 	"name": "p-some",
-	"version": "3.0.0",
+	"version": "4.0.0",
 	"description": "Wait for a specified number of promises to be fulfilled",
 	"license": "MIT",
 	"repository": "sindresorhus/p-some",
