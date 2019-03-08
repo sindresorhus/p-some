@@ -3,7 +3,10 @@ const AggregateError = require('aggregate-error');
 const PCancelable = require('p-cancelable');
 
 const pSome = (iterable, options) => new PCancelable((resolve, reject, onCancel) => {
-	options = {filter: () => true, ...options};
+	options = {
+		filter: () => true,
+		...options
+	};
 
 	if (!Number.isFinite(options.count)) {
 		throw new TypeError(`Expected a finite number, got ${typeof options.count}`);
