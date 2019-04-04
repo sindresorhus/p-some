@@ -96,6 +96,7 @@ const pSome = (iterable, options) => new PCancelable((resolve, reject, onCancel)
 });
 
 module.exports = pSome;
+// TODO: Remove this for the next major release
 module.exports.default = pSome;
 
 module.exports.AggregateError = AggregateError;
