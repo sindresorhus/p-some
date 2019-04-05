@@ -1,5 +1,6 @@
-import {expectType} from 'tsd-check';
-import pSome, {AggregateError, CancelablePromise} from '.';
+import {expectType} from 'tsd';
+import pSome = require('.');
+import {AggregateError, CancelablePromise} from '.';
 
 expectType<CancelablePromise<number[]>>(
 	pSome([Promise.resolve(1), Promise.resolve(2)], {count: 1})
@@ -25,4 +26,5 @@ expectType<CancelablePromise<(string | number | boolean)[]>>(
 	)
 );
 
-expectType<typeof AggregateError>(AggregateError);
+const aggregateError = new AggregateError([new Error()]);
+expectType<AggregateError>(aggregateError);
