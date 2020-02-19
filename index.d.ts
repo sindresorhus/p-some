@@ -23,6 +23,7 @@ declare namespace pSome {
 	}
 
 	type AggregateError = AggregateError_;
+	interface FilterError extends Error {}
 }
 
 declare const pSome: {
@@ -58,9 +59,7 @@ declare const pSome: {
 	): pSome.CancelablePromise<T[]>;
 
 	AggregateError: AggregateErrorConstructor;
-
-	// TODO: Remove this for the next major release
-	default: typeof pSome;
+	FilterError: pSome.FilterError;
 };
 
 export = pSome;

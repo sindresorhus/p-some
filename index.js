@@ -5,7 +5,10 @@ const PCancelable = require('p-cancelable');
 class FilterError extends Error { }
 
 const pSome = (iterable, options) => new PCancelable((resolve, reject, onCancel) => {
-	const {count, filter = () => true} = options;
+	const {
+		count,
+		filter = () => true
+	} = options;
 
 	if (!Number.isFinite(count)) {
 		reject(new TypeError(`Expected a finite number, got ${typeof options.count}`));
@@ -44,9 +47,11 @@ const pSome = (iterable, options) => new PCancelable((resolve, reject, onCancel)
 
 	for (const element of iterable) {
 		elementCount++;
+
 		(async () => {
 			try {
 				const value = await element;
+
 				if (isSettled) {
 					return;
 				}
@@ -60,6 +65,7 @@ const pSome = (iterable, options) => new PCancelable((resolve, reject, onCancel)
 				errors.push(error);
 			} finally {
 				completed.add(element);
+
 				if (!isSettled && maybeSettle()) {
 					cancelPending();
 				}
@@ -74,8 +80,5 @@ const pSome = (iterable, options) => new PCancelable((resolve, reject, onCancel)
 });
 
 module.exports = pSome;
-// TODO: Remove this for the next major release
-module.exports.default = pSome;
-
 module.exports.AggregateError = AggregateError;
 module.exports.FilterError = FilterError;

@@ -4,13 +4,14 @@
 	"description": "Wait for a specified number of promises to be fulfilled",
 	"license": "MIT",
 	"repository": "sindresorhus/p-some",
+	"funding": "https://github.com/sponsors/sindresorhus",
 	"author": {
 		"name": "Sindre Sorhus",
 		"email": "sindresorhus@gmail.com",
-		"url": "sindresorhus.com"
+		"url": "https://sindresorhus.com"
 	},
 	"engines": {
-		"node": ">=8"
+		"node": ">=10"
 	},
 	"scripts": {
 		"test": "xo && ava && tsd"
@@ -42,7 +43,7 @@
 	"devDependencies": {
 		"ava": "^1.4.1",
 		"delay": "^4.1.0",
-		"tsd": "^0.7.2",
-		"xo": "^0.24.0"
+		"tsd": "^0.11.0",
+		"xo": "^0.26.1"
 	}
 }

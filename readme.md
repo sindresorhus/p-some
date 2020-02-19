@@ -4,13 +4,11 @@
 
 Useful when you need the fastest of multiple promises.
 
-
 ## Install
 
 ```
 $ npm install p-some
 ```
-
 
 ## Usage
 
@@ -35,7 +33,6 @@ const pSome = require('p-some');
 })();
 ```
 
-
 ## API
 
 ### pSome(input, options)
@@ -52,12 +49,12 @@ An `Iterable` collection of promises/values to wait for.
 
 #### options
 
-Type: `Object`
+Type: `object`
 
 ##### count
 
-*Required*<br>
-Type: `number`<br>
+*Required*\
+Type: `number`\
 Minimum: `1`
 
 Number of promises from `input` that have to be fulfilled until the returned promise is fulfilled.
@@ -72,13 +69,11 @@ Receives the value resolved by the promise. Used to filter out values that doesn
 
 Exposed for instance checking.
 
+### pSome.FilterError
+
+Exposed for instance checking.
 
 ## Related
 
 - [p-any](https://github.com/sindresorhus/p-any) - Wait for any promise to be fulfilled
 - [More…](https://github.com/sindresorhus/promise-fun)
-
-
-## License
-
-MIT © [Sindre Sorhus](https://sindresorhus.com)
