@@ -88,23 +88,40 @@ test('returns an array of values #2', async t => {
 test('only returns values that passes `filter` option', async t => {
 	const f = [
 		'foo',
-		Promise.resolve(1),
+		1,
 		Promise.resolve('foo'),
-		2
+		Promise.resolve(2)
 	];
 	t.deepEqual(await pSome(f, {count: 1, filter: val => typeof val === 'number'}), [1]);
 	t.deepEqual(await pSome(f, {count: 2, filter: val => typeof val === 'number'}), [1, 2]);
 });
 
-test('reject with RangeError when values returned from `filter` option doesn\'t match `count`', async t => {
+test('reject with AggregateError when values returned from `filter` option doesn\'t match `count`', async t => {
 	const f = [
 		'foo',
 		Promise.resolve(1),
 		Promise.resolve('foo'),
 		2
 	];
-	const err = await t.throwsAsync(pSome(f, {count: 3, filter: val => typeof val === 'number'}), RangeError);
-	t.is(err.message, 'Not enough values pass the `filter` option');
+	const err = await t.throwsAsync(
+		pSome(f, {count: 3, filter: val => typeof val === 'number'}),
+		pSome.AggregateError
+	);
+	for (const e of err) {
+		t.is(e instanceof pSome.FilterError, true);
+		t.is(e.message, 'Value does not satisfy filter');
+	}
+});
+
+test('reject with AggregateError when unfulfillable', async t => {
+	const f = [
+		Promise.resolve(1),
+		Promise.resolve(2),
+		Promise.reject(new Error('boom'))
+	];
+	const err = await t.throwsAsync(pSome(f, {count: 2, filter: val => val > 1}), pSome.AggregateError);
+	t.regex(err.message, /Error: boom/);
+	t.regex(err.message, /Error: Value does not satisfy filter/);
 });
 
 test('cancels pending promises when cancel is called', async t => {
