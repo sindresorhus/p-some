@@ -76,4 +76,5 @@ Exposed for instance checking.
 ## Related
 
 - [p-any](https://github.com/sindresorhus/p-any) - Wait for any promise to be fulfilled
+- [p-one](https://github.com/sindresorhus/p-one) - Fulfills with `true` if any promise passes a truth test, similar to `Array.prototype.some`
 - [More…](https://github.com/sindresorhus/promise-fun)
