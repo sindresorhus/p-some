@@ -1,4 +1,4 @@
-# p-some [![Build Status](https://travis-ci.org/sindresorhus/p-some.svg?branch=master)](https://travis-ci.org/sindresorhus/p-some)
+# p-some
 
 > Wait for a specified number of promises to be fulfilled
 
