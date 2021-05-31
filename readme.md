@@ -15,22 +15,20 @@ $ npm install p-some
 Checks 4 websites and logs the 2 fastest.
 
 ```js
-const got = require('got');
-const pSome = require('p-some');
+import got from 'got';
+import pSome from 'p-some';
 
-(async () => {
-	const input = [
-		got.head('github.com').then(() => 'github'),
-		got.head('google.com').then(() => 'google'),
-		got.head('twitter.com').then(() => 'twitter'),
-		got.head('medium.com').then(() => 'medium')
-	];
+const input = [
+	got.head('github.com').then(() => 'github'),
+	got.head('google.com').then(() => 'google'),
+	got.head('twitter.com').then(() => 'twitter'),
+	got.head('medium.com').then(() => 'medium')
+];
 
-	const [first, second] = await pSome(input, {count: 2});
+const [first, second] = await pSome(input, {count: 2});
 
-	console.log(first, second);
-	//=> 'google twitter'
-})();
+console.log(first, second);
+//=> 'google twitter'
 ```
 
 ## API
@@ -65,11 +63,11 @@ Type: `Function`
 
 Receives the value resolved by the promise. Used to filter out values that doesn't satisfy a condition.
 
-### pSome.AggregateError
+### AggregateError
 
 Exposed for instance checking.
 
-### pSome.FilterError
+### FilterError
 
 Exposed for instance checking.
 

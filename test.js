@@ -1,11 +1,11 @@
 import test from 'ava';
 import delay from 'delay';
-import PCancelable from 'p-cancelable';
-import pSome from '.';
+import PCancelable, {CancelError} from 'p-cancelable';
+import pSome, {AggregateError, FilterError} from './index.js';
 
 test('reject with RangeError when fulfillment is impossible', async t => {
-	await t.throwsAsync(pSome([], {count: 1}), RangeError);
-	await t.throwsAsync(pSome([1, 2, 3], {count: 4}), RangeError);
+	await t.throwsAsync(pSome([], {count: 1}), {instanceOf: RangeError});
+	await t.throwsAsync(pSome([1, 2, 3], {count: 4}), {instanceOf: RangeError});
 	await t.notThrowsAsync(pSome([1, 2, 3], {count: 3}));
 	await t.notThrowsAsync(pSome([1, 2, 3], {count: 1}));
 });
@@ -46,8 +46,8 @@ test('rejects with all errors if satisfying `count` becomes impossible', async t
 		Promise.resolve(2)
 	];
 
-	const error = await t.throwsAsync(pSome(fixture, {count: 3}), pSome.AggregateError);
-	const items = [...error];
+	const error = await t.throwsAsync(pSome(fixture, {count: 3}), {instanceOf: AggregateError});
+	const items = [...error.errors];
 	t.is(items.length, 2);
 	t.deepEqual(items, [new Error('foo'), new Error('bar')]);
 });
@@ -60,35 +60,35 @@ test('rejects with all errors if satisfying `count` becomes impossible #2', asyn
 		Promise.resolve(2)
 	];
 
-	const error = await t.throwsAsync(pSome(fixture, {count: 4}), pSome.AggregateError);
-	const items = [...error];
+	const error = await t.throwsAsync(pSome(fixture, {count: 4}), {instanceOf: AggregateError});
+	const items = [...error.errors];
 	t.is(items.length, 1);
 	t.deepEqual(items, [new Error('foo')]);
 });
 
 test('returns an array of values', async t => {
 	const fixture = [
-		Promise.reject(new Error(1)),
-		Promise.resolve(2),
-		Promise.reject(new Error(3)),
-		Promise.resolve(4)
+		Promise.reject(new Error('1')),
+		Promise.resolve('2'),
+		Promise.reject(new Error('3')),
+		Promise.resolve('4')
 	];
 
-	t.deepEqual(await pSome(fixture, {count: 2}), [2, 4]);
+	t.deepEqual(await pSome(fixture, {count: 2}), ['2', '4']);
 });
 
 test('returns an array of values #2', async t => {
 	const fixture = () => [
-		Promise.resolve(1),
-		Promise.resolve(2),
-		Promise.reject(new Error(3)),
-		Promise.resolve(4),
-		Promise.reject(new Error(5))
+		Promise.resolve('1'),
+		Promise.resolve('2'),
+		Promise.reject(new Error('3')),
+		Promise.resolve('4'),
+		Promise.reject(new Error('5'))
 	];
 
-	t.deepEqual(await pSome(fixture(), {count: 1}), [1]);
-	t.deepEqual(await pSome(fixture(), {count: 2}), [1, 2]);
-	t.deepEqual(await pSome(fixture(), {count: 3}), [1, 2, 4]);
+	t.deepEqual(await pSome(fixture(), {count: 1}), ['1']);
+	t.deepEqual(await pSome(fixture(), {count: 2}), ['1', '2']);
+	t.deepEqual(await pSome(fixture(), {count: 3}), ['1', '2', '4']);
 });
 
 test('only returns values that passes `filter` option', async t => {
@@ -111,14 +111,14 @@ test('reject with AggregateError when values returned from `filter` option doesn
 		2
 	];
 
-	const errors = await t.throwsAsync(
+	const error = await t.throwsAsync(
 		pSome(fixture, {count: 3, filter: value => typeof value === 'number'}),
-		pSome.AggregateError
+		{instanceOf: AggregateError}
 	);
 
-	for (const error of errors) {
-		t.true(error instanceof pSome.FilterError);
-		t.is(error.message, 'Value does not satisfy filter');
+	for (const error_ of error.errors) {
+		t.true(error_ instanceof FilterError);
+		t.is(error_.message, 'Value does not satisfy filter');
 	}
 });
 
@@ -129,7 +129,7 @@ test('reject with AggregateError when unfulfillable', async t => {
 		Promise.reject(new Error('boom'))
 	];
 
-	const error = await t.throwsAsync(pSome(fixture, {count: 2, filter: value => value > 1}), pSome.AggregateError);
+	const error = await t.throwsAsync(pSome(fixture, {count: 2, filter: value => value > 1}), {instanceOf: AggregateError});
 	t.regex(error.message, /Error: boom/);
 	t.regex(error.message, /Error: Value does not satisfy filter/);
 });
@@ -151,11 +151,11 @@ test('cancels pending promises when cancel is called', async t => {
 	const promise = pSome(fixture, {count: 4});
 	promise.cancel();
 
-	await t.throwsAsync(promise, PCancelable.CancelError);
+	await t.throwsAsync(promise, {instanceOf: CancelError});
 	t.is(await fixture[0], 1);
 	t.is(await fixture[1], 2);
-	await t.throwsAsync(fixture[2], PCancelable.CancelError);
-	await t.throwsAsync(fixture[3], PCancelable.CancelError);
+	await t.throwsAsync(fixture[2], {instanceOf: CancelError});
+	await t.throwsAsync(fixture[3], {instanceOf: CancelError});
 });
 
 test('can handle non-cancelable promises', async t => {
@@ -171,7 +171,7 @@ test('can handle non-cancelable promises', async t => {
 
 	t.deepEqual(await pSome(fixture, {count: 1}), [1]);
 	t.is(await fixture[1], 2);
-	await t.throwsAsync(fixture[2], PCancelable.CancelError);
+	await t.throwsAsync(fixture[2], {instanceOf: CancelError});
 	t.is(await fixture[3], 4);
 });
 
@@ -193,8 +193,8 @@ test('cancels pending promises when count is reached', async t => {
 	];
 
 	t.deepEqual(await pSome(fixture, {count: 2}), [1, 2]);
-	await t.throwsAsync(fixture[2], PCancelable.CancelError);
-	await t.throwsAsync(fixture[3], PCancelable.CancelError);
+	await t.throwsAsync(fixture[2], {instanceOf: CancelError});
+	await t.throwsAsync(fixture[3], {instanceOf: CancelError});
 });
 
 test('cancels pending promises if satisfying `count` becomes impossible', async t => {
@@ -214,10 +214,10 @@ test('cancels pending promises if satisfying `count` becomes impossible', async 
 		})
 	];
 
-	const error = await t.throwsAsync(pSome(fixture, {count: 3}, pSome.AggregateError));
-	const items = [...error];
+	const error = await t.throwsAsync(pSome(fixture, {count: 3}, {instanceOf: AggregateError}));
+	const items = [...error.errors];
 	t.is(items.length, 2);
 	t.deepEqual(items, [new Error('foo'), new Error('bar')]);
-	await t.throwsAsync(fixture[2], PCancelable.CancelError);
-	await t.throwsAsync(fixture[3], PCancelable.CancelError);
+	await t.throwsAsync(fixture[2], {instanceOf: CancelError});
+	await t.throwsAsync(fixture[3], {instanceOf: CancelError});
 });

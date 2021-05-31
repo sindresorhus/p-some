@@ -1,19 +1,18 @@
 import {expectType} from 'tsd';
-import pSome = require('.');
-import {AggregateError, CancelablePromise} from '.';
+import pSome, {AggregateError, CancelablePromise} from './index.js';
 
 expectType<CancelablePromise<number[]>>(
 	pSome([Promise.resolve(1), Promise.resolve(2)], {count: 1})
 );
 
-expectType<CancelablePromise<(string | number | boolean)[]>>(
+expectType<CancelablePromise<Array<string | number | boolean>>>(
 	pSome<string | number | boolean>(
 		[Promise.resolve(1), Promise.resolve('a'), Promise.resolve(false)],
 		{count: 1}
 	)
 );
 
-expectType<CancelablePromise<(string | number | boolean)[]>>(
+expectType<CancelablePromise<Array<string | number | boolean>>>(
 	pSome<string | number | boolean>(
 		[Promise.resolve(1), Promise.resolve('a'), Promise.resolve(false)],
 		{
@@ -26,5 +25,7 @@ expectType<CancelablePromise<(string | number | boolean)[]>>(
 	)
 );
 
-const aggregateError = new AggregateError([new Error()]);
+// TODO: This is a TypeScript bug.
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+const aggregateError = new AggregateError([new Error('error')]);
 expectType<AggregateError>(aggregateError);
