@@ -6,8 +6,8 @@ Useful when you need the fastest of multiple promises.
 
 ## Install
 
-```
-$ npm install p-some
+```sh
+npm install p-some
 ```
 
 ## Usage
@@ -74,5 +74,4 @@ Exposed for instance checking.
 ## Related
 
 - [p-any](https://github.com/sindresorhus/p-any) - Wait for any promise to be fulfilled
-- [p-one](https://github.com/kevva/p-one) - Return `true` if any promise passes a testing function, similar to `Array#some`
 - [More…](https://github.com/sindresorhus/promise-fun)
