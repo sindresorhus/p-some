@@ -1,11 +1,11 @@
-import PCancelable from 'p-cancelable';
+import type PCancelable from 'p-cancelable';
 
 export type Value<T> = T | PromiseLike<T>;
 export type CancelablePromise<T> = PCancelable<T>;
 
 export class FilterError extends Error {}
 
-export interface Options<T> {
+export type Options<T> = {
 	/**
 	Number of promises from `input` that have to be fulfilled until the returned promise is fulfilled. Minimum: `1`.
 	*/
@@ -39,7 +39,7 @@ export interface Options<T> {
 	```
 	*/
 	readonly filter?: (value: T) => boolean | Promise<boolean>;
-}
+};
 
 /**
 Wait for a specified number of promises to be fulfilled.

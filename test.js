@@ -20,7 +20,7 @@ test('works with promises', async t => {
 	const fixture = () => [
 		Promise.resolve(1),
 		Promise.resolve(2),
-		Promise.resolve(3)
+		Promise.resolve(3),
 	];
 
 	t.deepEqual(await pSome(fixture(), {count: 1}), [1]);
@@ -32,7 +32,7 @@ test('returns values in the order they resolved', async t => {
 	const fixture = [
 		delay(100, {value: 1}),
 		Promise.resolve(2),
-		delay(50, {value: 3})
+		delay(50, {value: 3}),
 	];
 
 	t.deepEqual(await pSome(fixture, {count: 3}), [2, 3, 1]);
@@ -43,7 +43,7 @@ test('rejects with all errors if satisfying `count` becomes impossible', async t
 		Promise.reject(new Error('foo')),
 		Promise.resolve(1),
 		Promise.reject(new Error('bar')),
-		Promise.resolve(2)
+		Promise.resolve(2),
 	];
 
 	const error = await t.throwsAsync(pSome(fixture, {count: 3}), {instanceOf: AggregateError});
@@ -57,7 +57,7 @@ test('rejects with all errors if satisfying `count` becomes impossible #2', asyn
 		Promise.reject(new Error('foo')),
 		Promise.resolve(1),
 		Promise.reject(new Error('bar')),
-		Promise.resolve(2)
+		Promise.resolve(2),
 	];
 
 	const error = await t.throwsAsync(pSome(fixture, {count: 4}), {instanceOf: AggregateError});
@@ -71,7 +71,7 @@ test('returns an array of values', async t => {
 		Promise.reject(new Error('1')),
 		Promise.resolve('2'),
 		Promise.reject(new Error('3')),
-		Promise.resolve('4')
+		Promise.resolve('4'),
 	];
 
 	t.deepEqual(await pSome(fixture, {count: 2}), ['2', '4']);
@@ -83,7 +83,7 @@ test('returns an array of values #2', async t => {
 		Promise.resolve('2'),
 		Promise.reject(new Error('3')),
 		Promise.resolve('4'),
-		Promise.reject(new Error('5'))
+		Promise.reject(new Error('5')),
 	];
 
 	t.deepEqual(await pSome(fixture(), {count: 1}), ['1']);
@@ -96,7 +96,7 @@ test('only returns values that passes `filter` option', async t => {
 		'foo',
 		1,
 		Promise.resolve('foo'),
-		Promise.resolve(2)
+		Promise.resolve(2),
 	];
 
 	t.deepEqual(await pSome(fixture, {count: 1, filter: value => typeof value === 'number'}), [1]);
@@ -108,12 +108,12 @@ test('reject with AggregateError when values returned from `filter` option doesn
 		'foo',
 		Promise.resolve(1),
 		Promise.resolve('foo'),
-		2
+		2,
 	];
 
 	const error = await t.throwsAsync(
 		pSome(fixture, {count: 3, filter: value => typeof value === 'number'}),
-		{instanceOf: AggregateError}
+		{instanceOf: AggregateError},
 	);
 
 	for (const error_ of error.errors) {
@@ -126,7 +126,7 @@ test('reject with AggregateError when unfulfillable', async t => {
 	const fixture = [
 		Promise.resolve(1),
 		Promise.resolve(2),
-		Promise.reject(new Error('boom'))
+		Promise.reject(new Error('boom')),
 	];
 
 	const error = await t.throwsAsync(pSome(fixture, {count: 2, filter: value => value > 1}), {instanceOf: AggregateError});
@@ -139,7 +139,7 @@ test('supports async filter functions', async t => {
 		Promise.resolve(1),
 		Promise.resolve(2),
 		Promise.resolve(3),
-		Promise.resolve(4)
+		Promise.resolve(4),
 	];
 
 	// Async filter that only allows values > 2
@@ -156,7 +156,7 @@ test('async filter functions can reject and cause AggregateError', async t => {
 	const fixture = [
 		Promise.resolve(1),
 		Promise.resolve(2),
-		Promise.resolve(3)
+		Promise.resolve(3),
 	];
 
 	// Async filter that rejects all values
@@ -177,7 +177,7 @@ test('mixed sync and async filter behavior', async t => {
 		Promise.resolve('sync1'),
 		Promise.resolve('async1'),
 		Promise.resolve('sync2'),
-		Promise.resolve('async2')
+		Promise.resolve('async2'),
 	];
 
 	// Filter that returns async for 'async' values and sync for 'sync' values
@@ -207,7 +207,7 @@ test('cancels pending promises when cancel is called', async t => {
 		new PCancelable(async resolve => {
 			await delay(100);
 			resolve(4);
-		})
+		}),
 	];
 
 	const promise = pSome(fixture, {count: 4});
@@ -228,7 +228,7 @@ test('can handle non-cancelable promises', async t => {
 			await delay(10);
 			resolve(2);
 		}),
-		delay(200, {value: 4})
+		delay(200, {value: 4}),
 	];
 
 	t.deepEqual(await pSome(fixture, {count: 1}), [1]);
@@ -251,7 +251,7 @@ test('cancels pending promises when count is reached', async t => {
 		new PCancelable(async resolve => {
 			await delay(200);
 			resolve(4);
-		})
+		}),
 	];
 
 	t.deepEqual(await pSome(fixture, {count: 2}), [1, 2]);
@@ -273,7 +273,7 @@ test('cancels pending promises if satisfying `count` becomes impossible', async 
 		new PCancelable(async (_, reject) => {
 			await delay(300);
 			reject(new Error('qux'));
-		})
+		}),
 	];
 
 	const error = await t.throwsAsync(pSome(fixture, {count: 3}), {instanceOf: AggregateError});

@@ -8,7 +8,7 @@ export default function pSome(iterable, options) {
 	return new PCancelable((resolve, reject, onCancel) => {
 		const {
 			count,
-			filter = () => true
+			filter = () => true,
 		} = options;
 
 		if (!Number.isFinite(count)) {
@@ -84,4 +84,4 @@ export default function pSome(iterable, options) {
 	});
 }
 
-export {AggregateError};
+export {default as AggregateError} from 'aggregate-error';

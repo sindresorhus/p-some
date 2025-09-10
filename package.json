@@ -17,10 +17,10 @@
 	},
 	"sideEffects": false,
 	"engines": {
-		"node": ">=12.20"
+		"node": ">=20"
 	},
 	"scripts": {
-		"test": "xo && ava && tsd"
+		"test": "xo && ava && tsc index.d.ts"
 	},
 	"files": [
 		"index.js",
@@ -43,13 +43,13 @@
 		"bluebird"
 	],
 	"dependencies": {
-		"aggregate-error": "^4.0.0",
-		"p-cancelable": "^3.0.0"
+		"aggregate-error": "^5.0.0",
+		"p-cancelable": "^4.0.1"
 	},
 	"devDependencies": {
-		"ava": "^3.15.0",
-		"delay": "^5.0.0",
-		"tsd": "^0.16.0",
-		"xo": "^0.40.1"
+		"ava": "^6.4.1",
+		"delay": "^6.0.0",
+		"typescript": "^5.9.2",
+		"xo": "^1.2.2"
 	}
 }
