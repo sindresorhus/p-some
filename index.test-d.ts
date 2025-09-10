@@ -1,14 +1,14 @@
 import {expectType} from 'tsd';
-import pSome, {AggregateError, type CancelablePromise} from './index.js';
+import pSome from './index.js';
 
-expectType<CancelablePromise<number[]>>(pSome([Promise.resolve(1), Promise.resolve(2)], {count: 1}));
+expectType<Promise<number[]>>(pSome([Promise.resolve(1), Promise.resolve(2)], {count: 1}));
 
-expectType<CancelablePromise<Array<string | number | boolean>>>(pSome<string | number | boolean>(
+expectType<Promise<Array<string | number | boolean>>>(pSome<string | number | boolean>(
 	[Promise.resolve(1), Promise.resolve('a'), Promise.resolve(false)],
 	{count: 1},
 ));
 
-expectType<CancelablePromise<Array<string | number | boolean>>>(pSome<string | number | boolean>(
+expectType<Promise<Array<string | number | boolean>>>(pSome<string | number | boolean>(
 	[Promise.resolve(1), Promise.resolve('a'), Promise.resolve(false)],
 	{
 		count: 1,
@@ -19,7 +19,7 @@ expectType<CancelablePromise<Array<string | number | boolean>>>(pSome<string | n
 	},
 ));
 
-expectType<CancelablePromise<Array<string | number | boolean>>>(pSome<string | number | boolean>(
+expectType<Promise<Array<string | number | boolean>>>(pSome<string | number | boolean>(
 	[Promise.resolve(1), Promise.resolve('a'), Promise.resolve(false)],
 	{
 		count: 1,
@@ -30,7 +30,13 @@ expectType<CancelablePromise<Array<string | number | boolean>>>(pSome<string | n
 	},
 ));
 
-// TODO: This is a TypeScript bug.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-const aggregateError = new AggregateError([new Error('error')]);
+expectType<Promise<Array<string | number | boolean>>>(pSome<string | number | boolean>(
+	[Promise.resolve(1), Promise.resolve('a'), Promise.resolve(false)],
+	{
+		count: 1,
+		signal: new AbortController().signal,
+	},
+));
+
+const aggregateError = new AggregateError([new Error('error')], 'Test error');
 expectType<AggregateError>(aggregateError);

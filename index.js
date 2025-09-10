@@ -1,14 +1,11 @@
-import AggregateError from 'aggregate-error';
-import PCancelable from 'p-cancelable';
-
 export class FilterError extends Error {}
 
-// Important: Cannot use the `async` keyword.
 export default function pSome(iterable, options) {
-	return new PCancelable((resolve, reject, onCancel) => {
+	return new Promise((resolve, reject) => {
 		const {
 			count,
 			filter = () => true,
+			signal,
 		} = options;
 
 		if (!Number.isFinite(count)) {
@@ -16,35 +13,42 @@ export default function pSome(iterable, options) {
 			return;
 		}
 
+		signal?.throwIfAborted();
+
 		const values = [];
 		const errors = [];
 		let elementCount = 0;
 		let isSettled = false;
 
-		const completed = new Set();
-		const maybeSettle = () => {
+		const settle = () => {
+			if (isSettled) {
+				return;
+			}
+
 			if (values.length === count) {
-				resolve(values);
 				isSettled = true;
+				resolve(values);
+				return;
 			}
 
 			if (elementCount - errors.length < count) {
-				reject(new AggregateError(errors));
 				isSettled = true;
+				reject(new AggregateError(errors, 'Too many promises rejected'));
 			}
-
-			return isSettled;
 		};
 
-		const cancelPending = () => {
-			for (const promise of iterable) {
-				if (!completed.has(promise) && typeof promise.cancel === 'function') {
-					promise.cancel();
+		const handleAbort = () => {
+			if (!isSettled) {
+				isSettled = true;
+				try {
+					signal.throwIfAborted();
+				} catch (error) {
+					reject(error);
 				}
 			}
 		};
 
-		onCancel(cancelPending);
+		signal?.addEventListener('abort', handleAbort);
 
 		for (const element of iterable) {
 			elementCount++;
@@ -68,20 +72,14 @@ export default function pSome(iterable, options) {
 				} catch (error) {
 					errors.push(error);
 				} finally {
-					completed.add(element);
-
-					if (!isSettled && maybeSettle()) {
-						cancelPending();
-					}
+					settle();
 				}
 			})();
 		}
 
 		if (count > elementCount) {
 			reject(new RangeError(`Expected input to contain at least ${options.count} items, but contains ${elementCount} items`));
-			cancelPending();
 		}
 	});
 }
 
-export {default as AggregateError} from 'aggregate-error';

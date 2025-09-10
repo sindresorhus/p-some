@@ -35,9 +35,7 @@ console.log(first, second);
 
 ### pSome(input, options)
 
-Returns a [cancelable `Promise`](https://github.com/sindresorhus/p-cancelable) that is fulfilled when `count` promises from `input` are fulfilled. The fulfilled value is an `Array` of the values from the `input` promises in the order they were fulfilled. If it becomes impossible to satisfy `count`, for example, too many promises rejected, it will reject with an [`AggregateError`](https://github.com/sindresorhus/aggregate-error) error.
-
-If you pass in cancelable promises, specifically promises with a `.cancel()` method, that method will be called for the promises that are still unfulfilled when the returned `Promise` is either fulfilled or rejected.
+Returns a `Promise` that is fulfilled when `count` promises from `input` are fulfilled. The fulfilled value is an `Array` of the values from the `input` promises in the order they were fulfilled. If it becomes impossible to satisfy `count`, for example, too many promises rejected, it will reject with an `AggregateError`. The promise can be aborted using the `signal` option.
 
 #### input
 
@@ -61,7 +59,7 @@ Number of promises from `input` that have to be fulfilled until the returned pro
 
 Type: `Function`
 
-Receives the value resolved by the promise. Used to filter out values that doesn't satisfy a condition.
+Receives the value resolved by the promise. Used to filter out values that don't satisfy a condition.
 
 The filter function can return either a boolean directly or a Promise that resolves to a boolean.
 
@@ -87,6 +85,12 @@ const result = await pSome(input, {
 	}
 });
 ```
+
+##### signal
+
+Type: `AbortSignal`
+
+[AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal) to abort the operation.
 
 ### AggregateError
 

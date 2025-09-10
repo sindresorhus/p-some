@@ -1,7 +1,6 @@
 import test from 'ava';
 import delay from 'delay';
-import PCancelable, {CancelError} from 'p-cancelable';
-import pSome, {AggregateError, FilterError} from './index.js';
+import pSome, {FilterError} from './index.js';
 
 test('reject with RangeError when fulfillment is impossible', async t => {
 	await t.throwsAsync(pSome([], {count: 1}), {instanceOf: RangeError});
@@ -130,8 +129,10 @@ test('reject with AggregateError when unfulfillable', async t => {
 	];
 
 	const error = await t.throwsAsync(pSome(fixture, {count: 2, filter: value => value > 1}), {instanceOf: AggregateError});
-	t.regex(error.message, /Error: boom/);
-	t.regex(error.message, /Error: Value does not satisfy filter/);
+	// Check that the errors are properly included
+	t.is(error.errors.length, 2);
+	t.true(error.errors.some(error_ => error_.message === 'boom'));
+	t.true(error.errors.some(error_ => error_.message === 'Value does not satisfy filter'));
 });
 
 test('supports async filter functions', async t => {
@@ -196,90 +197,70 @@ test('mixed sync and async filter behavior', async t => {
 	t.true(result.some(value => value.includes('async')));
 });
 
-test('cancels pending promises when cancel is called', async t => {
+test('aborts when signal is aborted', async t => {
+	const abortController = new AbortController();
 	const fixture = [
-		new PCancelable(resolve => resolve(1)),
-		new PCancelable(resolve => resolve(2)),
-		new PCancelable(async resolve => {
-			await delay(10);
-			resolve(2);
-		}),
-		new PCancelable(async resolve => {
-			await delay(100);
-			resolve(4);
-		}),
+		delay(100, {value: 1}),
+		delay(200, {value: 2}),
+		delay(300, {value: 3}),
+		delay(400, {value: 4}),
 	];
 
-	const promise = pSome(fixture, {count: 4});
-	promise.cancel();
+	const promise = pSome(fixture, {count: 4, signal: abortController.signal});
+	// Abort after a short delay
+	setTimeout(() => abortController.abort(), 50);
 
-	await t.throwsAsync(promise, {instanceOf: CancelError});
-	t.is(await fixture[0], 1);
-	t.is(await fixture[1], 2);
-	await t.throwsAsync(fixture[2], {instanceOf: CancelError});
-	await t.throwsAsync(fixture[3], {instanceOf: CancelError});
+	try {
+		await promise;
+		t.fail('Should have thrown');
+	} catch (error) {
+		t.true(error instanceof DOMException);
+		t.is(error.name, 'AbortError');
+	}
 });
 
-test('can handle non-cancelable promises', async t => {
+test('rejects immediately if signal is already aborted', async t => {
+	const abortController = new AbortController();
+	abortController.abort();
+
 	const fixture = [
-		new PCancelable(resolve => resolve(1)),
-		delay(100, {value: 2}),
-		new PCancelable(async resolve => {
-			await delay(10);
-			resolve(2);
-		}),
+		Promise.resolve(1),
+		Promise.resolve(2),
+	];
+
+	try {
+		await pSome(fixture, {count: 1, signal: abortController.signal});
+		t.fail('Should have thrown');
+	} catch (error) {
+		t.true(error instanceof DOMException);
+		t.is(error.name, 'AbortError');
+	}
+});
+
+test('works without abort signal', async t => {
+	const fixture = [
+		Promise.resolve(1),
+		delay(50, {value: 2}),
+		delay(100, {value: 3}),
 		delay(200, {value: 4}),
 	];
 
-	t.deepEqual(await pSome(fixture, {count: 1}), [1]);
-	t.is(await fixture[1], 2);
-	await t.throwsAsync(fixture[2], {instanceOf: CancelError});
-	t.is(await fixture[3], 4);
-});
-
-test('cancels pending promises when count is reached', async t => {
-	const fixture = [
-		new PCancelable(resolve => resolve(1)),
-		new PCancelable(async resolve => {
-			await delay(50);
-			resolve(2);
-		}),
-		new PCancelable(async resolve => {
-			await delay(100);
-			resolve(3);
-		}),
-		new PCancelable(async resolve => {
-			await delay(200);
-			resolve(4);
-		}),
-	];
-
 	t.deepEqual(await pSome(fixture, {count: 2}), [1, 2]);
-	await t.throwsAsync(fixture[2], {instanceOf: CancelError});
-	await t.throwsAsync(fixture[3], {instanceOf: CancelError});
 });
 
-test('cancels pending promises if satisfying `count` becomes impossible', async t => {
+test('stops when satisfying count becomes impossible', async t => {
 	const fixture = [
-		new PCancelable((_, reject) => reject(new Error('foo'))),
-		new PCancelable(async (_, reject) => {
+		Promise.reject(new Error('foo')),
+		(async () => {
 			await delay(10);
-			reject(new Error('bar'));
-		}),
-		new PCancelable(async (_, reject) => {
-			await delay(200);
-			reject(new Error('baz'));
-		}),
-		new PCancelable(async (_, reject) => {
-			await delay(300);
-			reject(new Error('qux'));
-		}),
+			throw new Error('bar');
+		})(),
+		delay(200, {value: 'success1'}),
+		delay(300, {value: 'success2'}),
 	];
 
 	const error = await t.throwsAsync(pSome(fixture, {count: 3}), {instanceOf: AggregateError});
 	const items = [...error.errors];
 	t.is(items.length, 2);
 	t.deepEqual(items, [new Error('foo'), new Error('bar')]);
-	await t.throwsAsync(fixture[2], {instanceOf: CancelError});
-	await t.throwsAsync(fixture[3], {instanceOf: CancelError});
 });

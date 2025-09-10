@@ -1,7 +1,4 @@
-import type PCancelable from 'p-cancelable';
-
 export type Value<T> = T | PromiseLike<T>;
-export type CancelablePromise<T> = PCancelable<T>;
 
 export class FilterError extends Error {}
 
@@ -39,13 +36,18 @@ export type Options<T> = {
 	```
 	*/
 	readonly filter?: (value: T) => boolean | Promise<boolean>;
+
+	/**
+	AbortSignal to abort the operation.
+	*/
+	readonly signal?: AbortSignal;
 };
 
 /**
 Wait for a specified number of promises to be fulfilled.
 
-@param values - An `Iterable` collection of promises/values to wait for. If you pass in cancelable promises, specifically promises with a `.cancel()` method, that method will be called for the promises that are still unfulfilled when the returned `Promise` is either fulfilled or rejected.
-@returns A [cancelable `Promise`](https://github.com/sindresorhus/p-cancelable) that is fulfilled when `count` promises from `input` are fulfilled. The fulfilled value is an `Array` of the values from the `input` promises in the order they were fulfilled. If it becomes impossible to satisfy `count`, for example, too many promises rejected, it will reject with an [`AggregateError`](https://github.com/sindresorhus/aggregate-error) error.
+@param values - An `Iterable` collection of promises/values to wait for.
+@returns A `Promise` that is fulfilled when `count` promises from `input` are fulfilled. The fulfilled value is an `Array` of the values from the `input` promises in the order they were fulfilled. If it becomes impossible to satisfy `count`, for example, too many promises rejected, it will reject with an `AggregateError`. The promise can be aborted using the `signal` option.
 
 @example
 ```
@@ -68,6 +70,5 @@ console.log(first, second);
 export default function pSome<T>(
 	values: Iterable<Value<T>>,
 	options: Options<T>
-): CancelablePromise<T[]>;
+): Promise<T[]>;
 
-export {default as AggregateError} from 'aggregate-error';
