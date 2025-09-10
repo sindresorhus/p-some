@@ -63,6 +63,31 @@ Type: `Function`
 
 Receives the value resolved by the promise. Used to filter out values that doesn't satisfy a condition.
 
+The filter function can return either a boolean directly or a Promise that resolves to a boolean.
+
+Example with async filter:
+
+```js
+import got from 'got';
+import pSome from 'p-some';
+
+const input = [
+	got('api.github.com').then(response => response.body),
+	got('api.twitter.com').then(response => response.body),
+	got('api.reddit.com').then(response => response.body)
+];
+
+// Only include responses that contain certain data (async check)
+const result = await pSome(input, {
+	count: 2,
+	async filter(response) {
+		// Simulate async validation (e.g., database lookup)
+		await new Promise(resolve => setTimeout(resolve, 10));
+		return response.includes('api');
+	}
+});
+```
+
 ### AggregateError
 
 Exposed for instance checking.

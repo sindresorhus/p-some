@@ -134,6 +134,68 @@ test('reject with AggregateError when unfulfillable', async t => {
 	t.regex(error.message, /Error: Value does not satisfy filter/);
 });
 
+test('supports async filter functions', async t => {
+	const fixture = [
+		Promise.resolve(1),
+		Promise.resolve(2),
+		Promise.resolve(3),
+		Promise.resolve(4)
+	];
+
+	// Async filter that only allows values > 2
+	const asyncFilter = async value => {
+		await delay(10); // Simulate async operation
+		return value > 2;
+	};
+
+	const result = await pSome(fixture, {count: 2, filter: asyncFilter});
+	t.deepEqual(result, [3, 4]);
+});
+
+test('async filter functions can reject and cause AggregateError', async t => {
+	const fixture = [
+		Promise.resolve(1),
+		Promise.resolve(2),
+		Promise.resolve(3)
+	];
+
+	// Async filter that rejects all values
+	const asyncFilter = async () => {
+		await delay(10);
+		return false;
+	};
+
+	const error = await t.throwsAsync(pSome(fixture, {count: 1, filter: asyncFilter}), {instanceOf: AggregateError});
+	for (const error_ of error.errors) {
+		t.true(error_ instanceof FilterError);
+		t.is(error_.message, 'Value does not satisfy filter');
+	}
+});
+
+test('mixed sync and async filter behavior', async t => {
+	const fixture = [
+		Promise.resolve('sync1'),
+		Promise.resolve('async1'),
+		Promise.resolve('sync2'),
+		Promise.resolve('async2')
+	];
+
+	// Filter that returns async for 'async' values and sync for 'sync' values
+	const mixedFilter = value => {
+		if (value.includes('async')) {
+			return Promise.resolve(true);
+		}
+
+		return value.includes('sync');
+	};
+
+	const result = await pSome(fixture, {count: 4, filter: mixedFilter});
+	t.is(result.length, 4);
+	// Should include both sync and async values
+	t.true(result.some(value => value.includes('sync')));
+	t.true(result.some(value => value.includes('async')));
+});
+
 test('cancels pending promises when cancel is called', async t => {
 	const fixture = [
 		new PCancelable(resolve => resolve(1)),
@@ -214,7 +276,7 @@ test('cancels pending promises if satisfying `count` becomes impossible', async 
 		})
 	];
 
-	const error = await t.throwsAsync(pSome(fixture, {count: 3}, {instanceOf: AggregateError}));
+	const error = await t.throwsAsync(pSome(fixture, {count: 3}), {instanceOf: AggregateError});
 	const items = [...error.errors];
 	t.is(items.length, 2);
 	t.deepEqual(items, [new Error('foo'), new Error('bar')]);

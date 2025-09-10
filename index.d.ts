@@ -15,8 +15,30 @@ export interface Options<T> {
 	Used to filter out values that don't satisfy a condition.
 
 	@param value - The value resolved by the promise.
+
+	@example
+	```
+	import got from 'got';
+	import pSome from 'p-some';
+
+	const input = [
+		got('api.github.com').then(response => response.body),
+		got('api.twitter.com').then(response => response.body),
+		got('api.reddit.com').then(response => response.body)
+	];
+
+	// Only include responses that contain certain data (async check)
+	const result = await pSome(input, {
+		count: 2,
+		async filter(response) {
+			// Simulate async validation (e.g., database lookup)
+			await new Promise(resolve => setTimeout(resolve, 10));
+			return response.includes('api');
+		}
+	});
+	```
 	*/
-	readonly filter?: (value: T) => boolean;
+	readonly filter?: (value: T) => boolean | Promise<boolean>;
 }
 
 /**

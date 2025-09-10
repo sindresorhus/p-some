@@ -57,7 +57,10 @@ export default function pSome(iterable, options) {
 						return;
 					}
 
-					if (!filter(value)) {
+					const filterResult = filter(value);
+					const shouldInclude = filterResult instanceof Promise ? await filterResult : filterResult;
+
+					if (!shouldInclude) {
 						throw new FilterError('Value does not satisfy filter');
 					}
 

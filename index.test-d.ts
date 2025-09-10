@@ -25,6 +25,19 @@ expectType<CancelablePromise<Array<string | number | boolean>>>(
 	)
 );
 
+expectType<CancelablePromise<Array<string | number | boolean>>>(
+	pSome<string | number | boolean>(
+		[Promise.resolve(1), Promise.resolve('a'), Promise.resolve(false)],
+		{
+			count: 1,
+			async filter(element) {
+				expectType<string | number | boolean>(element);
+				return Promise.resolve(false);
+			}
+		}
+	)
+);
+
 // TODO: This is a TypeScript bug.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const aggregateError = new AggregateError([new Error('error')]);
