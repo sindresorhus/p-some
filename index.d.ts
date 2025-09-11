@@ -2,6 +2,20 @@ export type Value<T> = T | PromiseLike<T>;
 
 export class FilterError extends Error {}
 
+export type EveryOptions = {
+	/**
+	Number of input items tested concurrently. Minimum: `1`.
+
+	@default Infinity
+	*/
+	readonly concurrency?: number;
+
+	/**
+	AbortSignal to abort the operation.
+	*/
+	readonly signal?: AbortSignal;
+};
+
 export type Options<T> = {
 	/**
 	Number of promises from `input` that have to be fulfilled until the returned promise is fulfilled. Minimum: `1`.
@@ -72,3 +86,29 @@ export default function pSome<T>(
 	options: Options<T>
 ): Promise<T[]>;
 
+/**
+Test whether all promises pass a testing function.
+
+@param input - An `Iterable` collection of promises/values to test.
+@param testFunction - The function to test each promise with.
+@returns A Promise that resolves to `true` only if **every** item makes `testFunction` resolve to `true`. Resolves to `false` if any item makes it resolve to `false`. **Rejects** if any input or `testFunction` throws or rejects.
+
+@example
+```
+import {pEvery} from 'p-some';
+
+const result = await pEvery([
+	Promise.resolve(2),
+	Promise.resolve(4),
+	Promise.resolve(6)
+], value => value % 2 === 0);
+
+console.log(result);
+//=> true
+```
+*/
+export function pEvery<T>(
+	input: Iterable<Value<T>>,
+	testFunction: (value: T, index: number) => boolean | Promise<boolean>,
+	options?: EveryOptions
+): Promise<boolean>;

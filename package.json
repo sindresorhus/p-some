@@ -20,7 +20,7 @@
 		"node": ">=20"
 	},
 	"scripts": {
-		"test": "xo && ava && tsc index.d.ts"
+		"test": "xo && ava && tsc index.d.ts --lib es2015,dom"
 	},
 	"files": [
 		"index.js",

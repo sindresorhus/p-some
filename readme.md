@@ -92,9 +92,54 @@ Type: `AbortSignal`
 
 [AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal) to abort the operation.
 
-### AggregateError
+### pEvery(input, testFunction, options?)
 
-Exposed for instance checking.
+Test whether all promises pass a testing function.
+
+Returns a Promise that resolves to `true` only if **every** item makes `testFunction` resolve to `true`. Resolves to `false` if any item makes it resolve to `false`. **Rejects** if any input or `testFunction` throws or rejects.
+
+```js
+import {pEvery} from 'p-some';
+
+const result = await pEvery([
+	Promise.resolve(2),
+	Promise.resolve(4),
+	Promise.resolve(6)
+], value => value % 2 === 0);
+
+console.log(result);
+//=> true
+```
+
+#### input
+
+Type: `Iterable<Promise | unknown>`
+
+An `Iterable` collection of promises/values to test.
+
+#### testFunction
+
+Type: `Function`
+
+The function to test each promise with. Can be async.
+
+#### options
+
+Type: `object`
+
+##### concurrency
+
+Type: `number`\
+Default: `Infinity`\
+Minimum: `1`
+
+Number of input items tested concurrently.
+
+##### signal
+
+Type: `AbortSignal`
+
+[AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal) to abort the operation.
 
 ### FilterError
 
