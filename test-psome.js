@@ -1,5 +1,7 @@
-import test from 'ava';
-import delay from 'delay';
+/* eslint-disable node-test/no-conditional-assertion -- the abort-listener assertion runs inside the patched `addEventListener` callback and the last test asserts each collected error individually, so neither can be hoisted out */
+import test from 'node:test';
+import {setTimeout as delay} from 'node:timers/promises';
+import {rejectsWith} from './helpers.js';
 import pSome, {pEvery, FilterError} from './index.js';
 
 // Basic functionality tests
@@ -7,22 +9,18 @@ test('rejects immediately if signal is already aborted', async t => {
 	const controller = new AbortController();
 	controller.abort();
 
-	let workCalled = false;
-	try {
-		await pSome([Promise.resolve(1)], {
-			count: 1,
-			signal: controller.signal,
-			filter() {
-				workCalled = true;
-				return true;
-			},
-		});
-		t.fail('Should have thrown');
-	} catch (error) {
-		t.true(error instanceof DOMException);
-		t.is(error.name, 'AbortError');
-		t.false(workCalled, 'No work should run with already-aborted signal');
-	}
+	let isWorkCalled = false;
+	const error = await rejectsWith(pSome([Promise.resolve(1)], {
+		count: 1,
+		signal: controller.signal,
+		filter() {
+			isWorkCalled = true;
+			return true;
+		},
+	}), DOMException);
+
+	t.assert.strictEqual(error.name, 'AbortError');
+	t.assert.ok(!isWorkCalled, 'No work should run with already-aborted signal');
 });
 
 test('returns an array of values', async t => {
@@ -32,9 +30,9 @@ test('returns an array of values', async t => {
 		Promise.resolve(3),
 	], {count: 2});
 
-	t.is(result.length, 2);
-	t.true(result.includes(1));
-	t.true(result.includes(2));
+	t.assert.strictEqual(result.length, 2);
+	t.assert.ok(result.includes(1));
+	t.assert.ok(result.includes(2));
 });
 
 test('mixed sync and async filter behavior', async t => {
@@ -45,7 +43,7 @@ test('mixed sync and async filter behavior', async t => {
 		count: 2,
 		filter: x => x > 3,
 	});
-	t.deepEqual(syncResult, [4, 5]);
+	t.assert.deepStrictEqual(syncResult, [4, 5]);
 
 	// Async filter
 	const asyncResult = await pSome(input, {
@@ -55,7 +53,7 @@ test('mixed sync and async filter behavior', async t => {
 			return x > 3;
 		},
 	});
-	t.deepEqual(asyncResult, [4, 5]);
+	t.assert.deepStrictEqual(asyncResult, [4, 5]);
 });
 
 test('rejects with all errors if satisfying `count` becomes impossible', async t => {
@@ -65,8 +63,8 @@ test('rejects with all errors if satisfying `count` becomes impossible', async t
 		Promise.resolve(1),
 	];
 
-	const error = await t.throwsAsync(pSome(fixture, {count: 2}), {instanceOf: AggregateError});
-	t.is(error.errors.length, 2);
+	const error = await rejectsWith(pSome(fixture, {count: 2}), AggregateError);
+	t.assert.strictEqual(error.errors.length, 2);
 });
 
 test('rejects with all errors if satisfying `count` becomes impossible #2', async t => {
@@ -77,8 +75,8 @@ test('rejects with all errors if satisfying `count` becomes impossible #2', asyn
 		Promise.reject(new Error('baz')),
 	];
 
-	const error = await t.throwsAsync(pSome(fixture, {count: 3}), {instanceOf: AggregateError});
-	t.is(error.errors.length, 2); // Only 2 rejections needed to make count=3 impossible with 4 total items
+	const error = await rejectsWith(pSome(fixture, {count: 3}), AggregateError);
+	t.assert.strictEqual(error.errors.length, 2); // Only 2 rejections needed to make count=3 impossible with 4 total items
 });
 
 test('only returns values that passes `filter` option', async t => {
@@ -87,29 +85,32 @@ test('only returns values that passes `filter` option', async t => {
 		filter: x => x > 3,
 	});
 
-	t.deepEqual(result, [4, 5]);
+	t.assert.deepStrictEqual(result, [4, 5]);
 });
 
 test('reject with AggregateError when values returned from `filter` option doesn\'t match `count`', async t => {
-	await t.throwsAsync(
+	const error = await rejectsWith(
 		pSome([1, 2, 3], {count: 2, filter: x => x > 2}),
-		{instanceOf: AggregateError},
+		AggregateError,
 	);
+
+	t.assert.strictEqual(error.message, 'Too many promises rejected');
 });
 
 test('reject with AggregateError when unfulfillable', async t => {
-	await t.throwsAsync(
-		pSome([
-			Promise.reject(new Error('foo')),
-			Promise.reject(new Error('bar')),
-		], {count: 2}),
-		{instanceOf: AggregateError},
-	);
+	const fixture = [
+		Promise.reject(new Error('foo')),
+		Promise.reject(new Error('bar')),
+	];
+
+	const error = await rejectsWith(pSome(fixture, {count: 2}), AggregateError);
+
+	t.assert.strictEqual(error.message, 'Too many promises rejected');
 });
 
 test('works with values', async t => {
 	const result = await pSome([1, 2, 3], {count: 2});
-	t.deepEqual(result, [1, 2]);
+	t.assert.deepStrictEqual(result, [1, 2]);
 });
 
 test('works with promises', async t => {
@@ -119,43 +120,45 @@ test('works with promises', async t => {
 		Promise.resolve(3),
 	], {count: 2});
 
-	t.is(result.length, 2);
-	t.true(result.includes(1));
-	t.true(result.includes(2));
+	t.assert.strictEqual(result.length, 2);
+	t.assert.ok(result.includes(1));
+	t.assert.ok(result.includes(2));
 });
 
 test('returns an array of values #2', async t => {
 	const result = await pSome([
-		delay(100, {value: 4}),
-		delay(50, {value: 2}),
-		delay(200, {value: 5}),
-		delay(10, {value: 1}),
-		delay(150, {value: 3}),
+		delay(100, 4),
+		delay(50, 2),
+		delay(200, 5),
+		delay(10, 1),
+		delay(150, 3),
 	], {count: 3});
 
-	t.deepEqual(result, [1, 2, 4]);
+	t.assert.deepStrictEqual(result, [1, 2, 4]);
 });
 
 test('reject with RangeError when fulfillment is impossible', async t => {
-	await t.throwsAsync(
+	const error = await rejectsWith(
 		pSome([1, 2], {count: 4}),
-		{instanceOf: RangeError},
+		RangeError,
 	);
+
+	t.assert.strictEqual(error.message, 'Expected input to contain at least 4 items, but contains 2 items');
 });
 
 test('stops when satisfying count becomes impossible', async t => {
 	const input = [
 		Promise.reject(new Error('1')),
 		Promise.reject(new Error('2')),
-		delay(1000, {value: 'should not be called'}),
+		delay(1000, 'should not be called'),
 	];
 
 	const start = Date.now();
-	const error = await t.throwsAsync(pSome(input, {count: 2}), {instanceOf: AggregateError});
+	const error = await rejectsWith(pSome(input, {count: 2}), AggregateError);
 	const duration = Date.now() - start;
 
-	t.true(duration < 500);
-	t.is(error.errors.length, 2);
+	t.assert.ok(duration < 500);
+	t.assert.strictEqual(error.errors.length, 2);
 });
 
 test('supports async filter functions', async t => {
@@ -169,99 +172,88 @@ test('supports async filter functions', async t => {
 		},
 	});
 
-	t.deepEqual(result, [4, 5]);
+	t.assert.deepStrictEqual(result, [4, 5]);
 });
 
 test('async filter functions can reject and cause AggregateError', async t => {
 	const input = [1, 2, 3];
 
-	await t.throwsAsync(
+	const error = await rejectsWith(
 		pSome(input, {
 			count: 2,
 			async filter() {
 				throw new Error('Filter error');
 			},
 		}),
-		{instanceOf: AggregateError},
+		AggregateError,
 	);
+
+	t.assert.strictEqual(error.message, 'Too many promises rejected');
 });
 
 test('aborts when signal is aborted', async t => {
 	const controller = new AbortController();
-	const promise = pSome([delay(1000, {value: 1})], {count: 1, signal: controller.signal});
+	const promise = pSome([delay(1000, 1)], {count: 1, signal: controller.signal});
 
 	setTimeout(() => controller.abort(), 10);
 
-	try {
-		await promise;
-		t.fail('Should have thrown');
-	} catch (error) {
-		t.true(error instanceof DOMException);
-		t.is(error.name, 'AbortError');
-	}
+	const error = await rejectsWith(promise, DOMException);
+	t.assert.strictEqual(error.name, 'AbortError');
 });
 
 test('works without abort signal', async t => {
 	const result = await pSome([1, 2, 3], {count: 2});
-	t.deepEqual(result, [1, 2]);
+	t.assert.deepStrictEqual(result, [1, 2]);
 });
 
 test('returns values in the order they resolved', async t => {
 	const result = await pSome([
-		delay(100, {value: 'third'}),
-		delay(50, {value: 'second'}),
-		delay(10, {value: 'first'}),
+		delay(100, 'third'),
+		delay(50, 'second'),
+		delay(10, 'first'),
 	], {count: 3});
 
-	t.deepEqual(result, ['first', 'second', 'third']);
+	t.assert.deepStrictEqual(result, ['first', 'second', 'third']);
 });
 
 // Validation tests
 test('pSome should reject on invalid count: 0', async t => {
-	await t.throwsAsync(
-		pSome([1, 2], {count: 0}),
-		{instanceOf: TypeError, message: 'Expected `options.count` to be a finite integer ≥ 1'},
-	);
+	const error = await rejectsWith(pSome([1, 2], {count: 0}), TypeError);
+	t.assert.strictEqual(error.message, 'Expected `options.count` to be a finite integer ≥ 1');
 });
 
 test('pSome should reject on invalid count: 1.2', async t => {
-	await t.throwsAsync(
-		pSome([1, 2], {count: 1.2}),
-		{instanceOf: TypeError, message: 'Expected `options.count` to be a finite integer ≥ 1'},
-	);
+	const error = await rejectsWith(pSome([1, 2], {count: 1.2}), TypeError);
+	t.assert.strictEqual(error.message, 'Expected `options.count` to be a finite integer ≥ 1');
 });
 
 test('pSome should reject on invalid count: NaN', async t => {
-	await t.throwsAsync(
-		pSome([1, 2], {count: Number.NaN}),
-		{instanceOf: TypeError, message: 'Expected `options.count` to be a finite integer ≥ 1'},
-	);
+	const error = await rejectsWith(pSome([1, 2], {count: NaN}), TypeError);
+	t.assert.strictEqual(error.message, 'Expected `options.count` to be a finite integer ≥ 1');
 });
 
 test('pSome should reject on invalid count: negative', async t => {
-	await t.throwsAsync(
-		pSome([1, 2], {count: -5}),
-		{instanceOf: TypeError, message: 'Expected `options.count` to be a finite integer ≥ 1'},
-	);
+	const error = await rejectsWith(pSome([1, 2], {count: -5}), TypeError);
+	t.assert.strictEqual(error.message, 'Expected `options.count` to be a finite integer ≥ 1');
 });
 
 test('pSome should accept valid count: 1', async t => {
 	const result = await pSome([1, 2], {count: 1});
-	t.deepEqual(result, [1]);
+	t.assert.deepStrictEqual(result, [1]);
 });
 
 // Behavioral tests
 test('pSome should return values in order of fulfillment', async t => {
 	const fixture = [
-		delay(100, {value: 'slow'}),
-		delay(10, {value: 'fast'}),
-		delay(50, {value: 'medium'}),
+		delay(100, 'slow'),
+		delay(10, 'fast'),
+		delay(50, 'medium'),
 	];
 
 	const result = await pSome(fixture, {count: 3});
 
 	// Should be in fulfillment order: fast, medium, slow
-	t.deepEqual(result, ['fast', 'medium', 'slow']);
+	t.assert.deepStrictEqual(result, ['fast', 'medium', 'slow']);
 });
 
 test('pSome should handle sync filter correctly', async t => {
@@ -270,7 +262,7 @@ test('pSome should handle sync filter correctly', async t => {
 		filter: x => x > 2, // Sync filter
 	});
 
-	t.deepEqual(result, [3, 4]);
+	t.assert.deepStrictEqual(result, [3, 4]);
 });
 
 test('pSome should handle async filter correctly', async t => {
@@ -282,17 +274,19 @@ test('pSome should handle async filter correctly', async t => {
 		},
 	});
 
-	t.deepEqual(result, [3, 4]);
+	t.assert.deepStrictEqual(result, [3, 4]);
 });
 
 test('pSome should not count falsey filter results as success', async t => {
-	await t.throwsAsync(
+	const error = await rejectsWith(
 		pSome([1, 2, 3, 4], {
 			count: 3,
 			filter: x => x > 5, // No values pass filter
 		}),
-		{instanceOf: AggregateError},
+		AggregateError,
 	);
+
+	t.assert.strictEqual(error.message, 'Too many promises rejected');
 });
 
 test('pSome should handle mixed sync/async values correctly', async t => {
@@ -305,9 +299,9 @@ test('pSome should handle mixed sync/async values correctly', async t => {
 	const result = await pSome(fixture, {count: 2});
 
 	// Should get first 2 values that resolve (order may vary due to async nature)
-	t.is(result.length, 2);
-	t.true(result.includes(1));
-	t.true(result.includes(2) || result.includes(3));
+	t.assert.strictEqual(result.length, 2);
+	t.assert.ok(result.includes(1));
+	t.assert.ok(result.includes(2) || result.includes(3));
 });
 
 // AbortSignal tests
@@ -322,7 +316,7 @@ test('pSome abort listener should use once:true semantics', async t => {
 		if (type === 'abort') {
 			listenerCount++;
 			// Verify once:true is used
-			t.true(options?.once, 'Should use {once: true} for abort listener');
+			t.assert.ok(options?.once, 'Should use {once: true} for abort listener');
 		}
 
 		return originalAdd.call(this, type, listener, options);
@@ -341,8 +335,8 @@ test('pSome abort listener should use once:true semantics', async t => {
 		signal: controller.signal,
 	});
 
-	t.deepEqual(result, [1]);
-	t.is(listenerCount, 0, 'Should cleanup listener after resolution');
+	t.assert.deepStrictEqual(result, [1]);
+	t.assert.strictEqual(listenerCount, 0, 'Should cleanup listener after resolution');
 });
 
 test('pSome should cleanup abort listeners on early false', async t => {
@@ -373,8 +367,8 @@ test('pSome should cleanup abort listeners on early false', async t => {
 		signal: controller.signal,
 	});
 
-	t.false(result);
-	t.is(listenerCount, 0, 'Should cleanup listeners on early false');
+	t.assert.ok(!result);
+	t.assert.strictEqual(listenerCount, 0, 'Should cleanup listeners on early false');
 });
 
 test('pSome should cleanup abort listeners when resolved', async t => {
@@ -405,8 +399,8 @@ test('pSome should cleanup abort listeners when resolved', async t => {
 		signal: controller.signal,
 	});
 
-	t.deepEqual(result, [1]);
-	t.is(listenerCount, 0, 'Abort listener should be cleaned up after resolution');
+	t.assert.deepStrictEqual(result, [1]);
+	t.assert.strictEqual(listenerCount, 0, 'Abort listener should be cleaned up after resolution');
 });
 
 test('pSome should cleanup abort listeners when rejected', async t => {
@@ -432,37 +426,39 @@ test('pSome should cleanup abort listeners when rejected', async t => {
 		return originalRemove.call(this, type, listener);
 	};
 
-	await t.throwsAsync(
-		pSome([Promise.reject(new Error('test'))], {
+	const fixture = [Promise.reject(new Error('test'))];
+
+	await rejectsWith(
+		pSome(fixture, {
 			count: 1,
 			signal: controller.signal,
 		}),
-		{instanceOf: AggregateError},
+		AggregateError,
 	);
 
-	t.is(listenerCount, 0, 'Abort listener should be cleaned up after rejection');
+	t.assert.strictEqual(listenerCount, 0, 'Abort listener should be cleaned up after rejection');
 });
 
 // Improvement tests
 test('pSome should reject immediately for impossible count', async t => {
-	const error = await t.throwsAsync(
+	const error = await rejectsWith(
 		pSome([Promise.resolve(1), Promise.resolve(2)], {count: 5}),
-		{instanceOf: RangeError},
+		RangeError,
 	);
 
-	t.is(error.message, 'Expected input to contain at least 5 items, but contains 2 items');
+	t.assert.strictEqual(error.message, 'Expected input to contain at least 5 items, but contains 2 items');
 });
 
 test('pSome early bounds check should fail quickly', async t => {
 	const start = Date.now();
 
-	await t.throwsAsync(
-		pSome([delay(1000, {value: 1})], {count: 5}),
-		{instanceOf: RangeError},
+	await rejectsWith(
+		pSome([delay(1000, 1)], {count: 5}),
+		RangeError,
 	);
 
 	const duration = Date.now() - start;
-	t.true(duration < 100, 'Should fail immediately without waiting');
+	t.assert.ok(duration < 100, 'Should fail immediately without waiting');
 });
 
 test('pSome should detect impossibility correctly with pending count', async t => {
@@ -472,8 +468,8 @@ test('pSome should detect impossibility correctly with pending count', async t =
 		Promise.reject(new Error('error2')),
 	];
 
-	const error = await t.throwsAsync(pSome(fixture, {count: 2}), {instanceOf: AggregateError});
-	t.is(error.errors.length, 2);
+	const error = await rejectsWith(pSome(fixture, {count: 2}), AggregateError);
+	t.assert.strictEqual(error.errors.length, 2);
 });
 
 test('pSome impossibility detection should be precise', async t => {
@@ -484,7 +480,7 @@ test('pSome impossibility detection should be precise', async t => {
 		Promise.reject(new Error('should not matter')),
 	], {count: 2});
 
-	t.deepEqual(result, [1, 2]);
+	t.assert.deepStrictEqual(result, [1, 2]);
 });
 
 test('pSome should not falsely detect impossibility', async t => {
@@ -495,7 +491,7 @@ test('pSome should not falsely detect impossibility', async t => {
 		Promise.resolve(3),
 	], {count: 3});
 
-	t.deepEqual(result, [1, 2, 3]);
+	t.assert.deepStrictEqual(result, [1, 2, 3]);
 });
 
 test('pSome should cleanup abort listeners even when detecting impossibility', async t => {
@@ -521,32 +517,34 @@ test('pSome should cleanup abort listeners even when detecting impossibility', a
 		return originalRemove.call(this, type, listener);
 	};
 
-	await t.throwsAsync(
-		pSome([
-			Promise.reject(new Error('1')),
-			Promise.reject(new Error('2')),
-		], {
+	const fixture = [
+		Promise.reject(new Error('1')),
+		Promise.reject(new Error('2')),
+	];
+
+	await rejectsWith(
+		pSome(fixture, {
 			count: 2,
 			signal: controller.signal,
 		}),
-		{instanceOf: AggregateError},
+		AggregateError,
 	);
 
-	t.is(listenerCount, 0, 'Abort listener should be cleaned up even when detecting impossibility');
+	t.assert.strictEqual(listenerCount, 0, 'Abort listener should be cleaned up even when detecting impossibility');
 });
 
 test('pSome with filter that always returns false should reject with AggregateError containing only FilterError instances', async t => {
-	const error = await t.throwsAsync(
+	const error = await rejectsWith(
 		pSome([1, 2, 3], {
 			count: 2,
 			filter: () => false, // Always returns false
 		}),
-		{instanceOf: AggregateError},
+		AggregateError,
 	);
 
 	// Should have 2 FilterError instances (enough to make count=2 impossible with 3 input items)
-	t.is(error.errors.length, 2);
+	t.assert.strictEqual(error.errors.length, 2);
 	for (const filterError of error.errors) {
-		t.true(filterError instanceof FilterError);
+		t.assert.ok(filterError instanceof FilterError);
 	}
 });

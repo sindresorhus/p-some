@@ -1,18 +1,20 @@
-import test from 'ava';
-import delay from 'delay';
+/* eslint-disable node-test/no-conditional-assertion -- each collected error is asserted individually, so the assertions have to sit inside the loop */
+import test from 'node:test';
+import {setTimeout as delay} from 'node:timers/promises';
+import {rejectsWith} from './helpers.js';
 import pSome, {FilterError} from './index.js';
 
 test('reject with RangeError when fulfillment is impossible', async t => {
-	await t.throwsAsync(pSome([], {count: 1}), {instanceOf: RangeError});
-	await t.throwsAsync(pSome([1, 2, 3], {count: 4}), {instanceOf: RangeError});
-	await t.notThrowsAsync(pSome([1, 2, 3], {count: 3}));
-	await t.notThrowsAsync(pSome([1, 2, 3], {count: 1}));
+	await rejectsWith(pSome([], {count: 1}), RangeError);
+	await rejectsWith(pSome([1, 2, 3], {count: 4}), RangeError);
+	t.assert.deepStrictEqual(await pSome([1, 2, 3], {count: 3}), [1, 2, 3]);
+	t.assert.deepStrictEqual(await pSome([1, 2, 3], {count: 1}), [1]);
 });
 
 test('works with values', async t => {
-	t.deepEqual(await pSome([1, 2, 3], {count: 1}), [1]);
-	t.deepEqual(await pSome([1, 2, 3], {count: 2}), [1, 2]);
-	t.deepEqual(await pSome([1, 2, 3], {count: 3}), [1, 2, 3]);
+	t.assert.deepStrictEqual(await pSome([1, 2, 3], {count: 1}), [1]);
+	t.assert.deepStrictEqual(await pSome([1, 2, 3], {count: 2}), [1, 2]);
+	t.assert.deepStrictEqual(await pSome([1, 2, 3], {count: 3}), [1, 2, 3]);
 });
 
 test('works with promises', async t => {
@@ -22,19 +24,19 @@ test('works with promises', async t => {
 		Promise.resolve(3),
 	];
 
-	t.deepEqual(await pSome(fixture(), {count: 1}), [1]);
-	t.deepEqual(await pSome(fixture(), {count: 2}), [1, 2]);
-	t.deepEqual(await pSome(fixture(), {count: 3}), [1, 2, 3]);
+	t.assert.deepStrictEqual(await pSome(fixture(), {count: 1}), [1]);
+	t.assert.deepStrictEqual(await pSome(fixture(), {count: 2}), [1, 2]);
+	t.assert.deepStrictEqual(await pSome(fixture(), {count: 3}), [1, 2, 3]);
 });
 
 test('returns values in the order they resolved', async t => {
 	const fixture = [
-		delay(100, {value: 1}),
+		delay(100, 1),
 		Promise.resolve(2),
-		delay(50, {value: 3}),
+		delay(50, 3),
 	];
 
-	t.deepEqual(await pSome(fixture, {count: 3}), [2, 3, 1]);
+	t.assert.deepStrictEqual(await pSome(fixture, {count: 3}), [2, 3, 1]);
 });
 
 test('rejects with all errors if satisfying `count` becomes impossible', async t => {
@@ -45,10 +47,10 @@ test('rejects with all errors if satisfying `count` becomes impossible', async t
 		Promise.resolve(2),
 	];
 
-	const error = await t.throwsAsync(pSome(fixture, {count: 3}), {instanceOf: AggregateError});
+	const error = await rejectsWith(pSome(fixture, {count: 3}), AggregateError);
 	const items = [...error.errors];
-	t.is(items.length, 2);
-	t.deepEqual(items, [new Error('foo'), new Error('bar')]);
+	t.assert.strictEqual(items.length, 2);
+	t.assert.deepStrictEqual(items, [new Error('foo'), new Error('bar')]);
 });
 
 test('rejects with all errors if satisfying `count` becomes impossible #2', async t => {
@@ -59,10 +61,10 @@ test('rejects with all errors if satisfying `count` becomes impossible #2', asyn
 		Promise.resolve(2),
 	];
 
-	const error = await t.throwsAsync(pSome(fixture, {count: 4}), {instanceOf: AggregateError});
+	const error = await rejectsWith(pSome(fixture, {count: 4}), AggregateError);
 	const items = [...error.errors];
-	t.is(items.length, 1);
-	t.deepEqual(items, [new Error('foo')]);
+	t.assert.strictEqual(items.length, 1);
+	t.assert.deepStrictEqual(items, [new Error('foo')]);
 });
 
 test('returns an array of values', async t => {
@@ -73,7 +75,7 @@ test('returns an array of values', async t => {
 		Promise.resolve('4'),
 	];
 
-	t.deepEqual(await pSome(fixture, {count: 2}), ['2', '4']);
+	t.assert.deepStrictEqual(await pSome(fixture, {count: 2}), ['2', '4']);
 });
 
 test('returns an array of values #2', async t => {
@@ -85,9 +87,9 @@ test('returns an array of values #2', async t => {
 		Promise.reject(new Error('5')),
 	];
 
-	t.deepEqual(await pSome(fixture(), {count: 1}), ['1']);
-	t.deepEqual(await pSome(fixture(), {count: 2}), ['1', '2']);
-	t.deepEqual(await pSome(fixture(), {count: 3}), ['1', '2', '4']);
+	t.assert.deepStrictEqual(await pSome(fixture(), {count: 1}), ['1']);
+	t.assert.deepStrictEqual(await pSome(fixture(), {count: 2}), ['1', '2']);
+	t.assert.deepStrictEqual(await pSome(fixture(), {count: 3}), ['1', '2', '4']);
 });
 
 test('only returns values that passes `filter` option', async t => {
@@ -98,8 +100,8 @@ test('only returns values that passes `filter` option', async t => {
 		Promise.resolve(2),
 	];
 
-	t.deepEqual(await pSome(fixture, {count: 1, filter: value => typeof value === 'number'}), [1]);
-	t.deepEqual(await pSome(fixture, {count: 2, filter: value => typeof value === 'number'}), [1, 2]);
+	t.assert.deepStrictEqual(await pSome(fixture, {count: 1, filter: value => typeof value === 'number'}), [1]);
+	t.assert.deepStrictEqual(await pSome(fixture, {count: 2, filter: value => typeof value === 'number'}), [1, 2]);
 });
 
 test('reject with AggregateError when values returned from `filter` option doesn\'t match `count`', async t => {
@@ -110,14 +112,14 @@ test('reject with AggregateError when values returned from `filter` option doesn
 		2,
 	];
 
-	const error = await t.throwsAsync(
+	const error = await rejectsWith(
 		pSome(fixture, {count: 3, filter: value => typeof value === 'number'}),
-		{instanceOf: AggregateError},
+		AggregateError,
 	);
 
 	for (const error_ of error.errors) {
-		t.true(error_ instanceof FilterError);
-		t.is(error_.message, 'Value does not satisfy filter');
+		t.assert.ok(error_ instanceof FilterError);
+		t.assert.strictEqual(error_.message, 'Value does not satisfy filter');
 	}
 });
 
@@ -128,11 +130,11 @@ test('reject with AggregateError when unfulfillable', async t => {
 		Promise.reject(new Error('boom')),
 	];
 
-	const error = await t.throwsAsync(pSome(fixture, {count: 2, filter: value => value > 1}), {instanceOf: AggregateError});
+	const error = await rejectsWith(pSome(fixture, {count: 2, filter: value => value > 1}), AggregateError);
 	// Check that the errors are properly included
-	t.is(error.errors.length, 2);
-	t.true(error.errors.some(error_ => error_.message === 'boom'));
-	t.true(error.errors.some(error_ => error_.message === 'Value does not satisfy filter'));
+	t.assert.strictEqual(error.errors.length, 2);
+	t.assert.ok(error.errors.some(error_ => error_.message === 'boom'));
+	t.assert.ok(error.errors.some(error_ => error_.message === 'Value does not satisfy filter'));
 });
 
 test('supports async filter functions', async t => {
@@ -150,7 +152,7 @@ test('supports async filter functions', async t => {
 	};
 
 	const result = await pSome(fixture, {count: 2, filter: asyncFilter});
-	t.deepEqual(result, [3, 4]);
+	t.assert.deepStrictEqual(result, [3, 4]);
 });
 
 test('async filter functions can reject and cause AggregateError', async t => {
@@ -166,10 +168,10 @@ test('async filter functions can reject and cause AggregateError', async t => {
 		return false;
 	};
 
-	const error = await t.throwsAsync(pSome(fixture, {count: 1, filter: asyncFilter}), {instanceOf: AggregateError});
+	const error = await rejectsWith(pSome(fixture, {count: 1, filter: asyncFilter}), AggregateError);
 	for (const error_ of error.errors) {
-		t.true(error_ instanceof FilterError);
-		t.is(error_.message, 'Value does not satisfy filter');
+		t.assert.ok(error_ instanceof FilterError);
+		t.assert.strictEqual(error_.message, 'Value does not satisfy filter');
 	}
 });
 
@@ -182,41 +184,30 @@ test('mixed sync and async filter behavior', async t => {
 	];
 
 	// Filter that returns async for 'async' values and sync for 'sync' values
-	const mixedFilter = value => {
-		if (value.includes('async')) {
-			return Promise.resolve(true);
-		}
-
-		return value.includes('sync');
-	};
+	const mixedFilter = value => value.includes('async') ? Promise.resolve(true) : value.includes('sync');
 
 	const result = await pSome(fixture, {count: 4, filter: mixedFilter});
-	t.is(result.length, 4);
+	t.assert.strictEqual(result.length, 4);
 	// Should include both sync and async values
-	t.true(result.some(value => value.includes('sync')));
-	t.true(result.some(value => value.includes('async')));
+	t.assert.ok(result.some(value => value.includes('sync')));
+	t.assert.ok(result.some(value => value.includes('async')));
 });
 
 test('aborts when signal is aborted', async t => {
 	const abortController = new AbortController();
 	const fixture = [
-		delay(100, {value: 1}),
-		delay(200, {value: 2}),
-		delay(300, {value: 3}),
-		delay(400, {value: 4}),
+		delay(100, 1),
+		delay(200, 2),
+		delay(300, 3),
+		delay(400, 4),
 	];
 
 	const promise = pSome(fixture, {count: 4, signal: abortController.signal});
 	// Abort after a short delay
 	setTimeout(() => abortController.abort(), 50);
 
-	try {
-		await promise;
-		t.fail('Should have thrown');
-	} catch (error) {
-		t.true(error instanceof DOMException);
-		t.is(error.name, 'AbortError');
-	}
+	const error = await rejectsWith(promise, DOMException);
+	t.assert.strictEqual(error.name, 'AbortError');
 });
 
 test('rejects immediately if signal is already aborted', async t => {
@@ -228,24 +219,19 @@ test('rejects immediately if signal is already aborted', async t => {
 		Promise.resolve(2),
 	];
 
-	try {
-		await pSome(fixture, {count: 1, signal: abortController.signal});
-		t.fail('Should have thrown');
-	} catch (error) {
-		t.true(error instanceof DOMException);
-		t.is(error.name, 'AbortError');
-	}
+	const error = await rejectsWith(pSome(fixture, {count: 1, signal: abortController.signal}), DOMException);
+	t.assert.strictEqual(error.name, 'AbortError');
 });
 
 test('works without abort signal', async t => {
 	const fixture = [
 		Promise.resolve(1),
-		delay(50, {value: 2}),
-		delay(100, {value: 3}),
-		delay(200, {value: 4}),
+		delay(50, 2),
+		delay(100, 3),
+		delay(200, 4),
 	];
 
-	t.deepEqual(await pSome(fixture, {count: 2}), [1, 2]);
+	t.assert.deepStrictEqual(await pSome(fixture, {count: 2}), [1, 2]);
 });
 
 test('stops when satisfying count becomes impossible', async t => {
@@ -255,12 +241,12 @@ test('stops when satisfying count becomes impossible', async t => {
 			await delay(10);
 			throw new Error('bar');
 		})(),
-		delay(200, {value: 'success1'}),
-		delay(300, {value: 'success2'}),
+		delay(200, 'success1'),
+		delay(300, 'success2'),
 	];
 
-	const error = await t.throwsAsync(pSome(fixture, {count: 3}), {instanceOf: AggregateError});
+	const error = await rejectsWith(pSome(fixture, {count: 3}), AggregateError);
 	const items = [...error.errors];
-	t.is(items.length, 2);
-	t.deepEqual(items, [new Error('foo'), new Error('bar')]);
+	t.assert.strictEqual(items.length, 2);
+	t.assert.deepStrictEqual(items, [new Error('foo'), new Error('bar')]);
 });

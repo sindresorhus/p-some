@@ -6,13 +6,15 @@ function createAbortHandler(signal, isSettled, reject) {
 	}
 
 	const handleAbort = () => {
-		if (!isSettled.value) {
-			isSettled.value = true;
-			try {
-				signal.throwIfAborted();
-			} catch (error) {
-				reject(error);
-			}
+		if (isSettled.value) {
+			return;
+		}
+
+		isSettled.value = true;
+		try {
+			signal.throwIfAborted();
+		} catch (error) {
+			reject(error);
 		}
 	};
 
@@ -25,9 +27,10 @@ function createAbortHandler(signal, isSettled, reject) {
 
 export function pEvery(iterable, testFunction, options = {}) {
 	return new Promise((resolve, reject) => {
-		const {concurrency = Number.POSITIVE_INFINITY, signal} = options;
+		const {concurrency = Infinity, signal} = options;
 
-		if (!(concurrency === Number.POSITIVE_INFINITY || (Number.isFinite(concurrency) && Number.isInteger(concurrency) && concurrency >= 1))) {
+		// eslint-disable-next-line unicorn/prefer-number-is-safe-integer -- isInteger is the documented contract; isSafeInteger would reject values above 2^53 that behave identically here
+		if (!(concurrency === Infinity || (Number.isFinite(concurrency) && Number.isInteger(concurrency) && concurrency >= 1))) {
 			reject(new TypeError('Expected `concurrency` to be Infinity or a finite integer ≥ 1'));
 			return;
 		}
@@ -49,6 +52,7 @@ export function pEvery(iterable, testFunction, options = {}) {
 			return;
 		}
 
+		// eslint-disable-next-line unicorn/consistent-boolean-name -- a mutable box shared with the abort handler, not a boolean
 		const isSettled = {value: false};
 		let completedCount = 0;
 		let runningCount = 0;
@@ -108,6 +112,7 @@ export default function pSome(iterable, options) {
 	return new Promise((resolve, reject) => {
 		const {count, filter = () => true, signal} = options;
 
+		// eslint-disable-next-line unicorn/prefer-number-is-safe-integer -- isInteger is the documented contract; isSafeInteger would turn an out-of-range `count` from a RangeError into a TypeError
 		if (!(Number.isFinite(count) && Number.isInteger(count) && count >= 1)) {
 			reject(new TypeError('Expected `options.count` to be a finite integer ≥ 1'));
 			return;
@@ -132,6 +137,7 @@ export default function pSome(iterable, options) {
 
 		const values = [];
 		const errors = [];
+		// eslint-disable-next-line unicorn/consistent-boolean-name -- a mutable box shared with the abort handler, not a boolean
 		const isSettled = {value: false};
 
 		const cleanupAbort = createAbortHandler(signal, isSettled, reject);

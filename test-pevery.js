@@ -1,5 +1,7 @@
-import test from 'ava';
-import delay from 'delay';
+/* eslint-disable node-test/no-conditional-assertion -- the abort-listener assertion runs inside the patched `addEventListener` callback, so it cannot be hoisted out */
+import test from 'node:test';
+import {setTimeout as delay} from 'node:timers/promises';
+import {rejectsWith} from './helpers.js';
 import {pEvery} from './index.js';
 
 // Basic functionality tests
@@ -11,7 +13,7 @@ test('pEvery should work like Array.every() but for promises', async t => {
 	];
 
 	const result = await pEvery(fixture, value => value % 2 === 0);
-	t.true(result);
+	t.assert.ok(result);
 });
 
 test('pEvery should return false when some promises fail test', async t => {
@@ -22,7 +24,7 @@ test('pEvery should return false when some promises fail test', async t => {
 	];
 
 	const result = await pEvery(fixture, value => value % 2 === 0);
-	t.false(result);
+	t.assert.ok(!result);
 });
 
 test('pEvery should work with async test functions', async t => {
@@ -37,7 +39,7 @@ test('pEvery should work with async test functions', async t => {
 		return value % 2 === 0;
 	});
 
-	t.true(result);
+	t.assert.ok(result);
 });
 
 test('pEvery should work with mixed promises and values', async t => {
@@ -48,7 +50,7 @@ test('pEvery should work with mixed promises and values', async t => {
 	];
 
 	const result = await pEvery(fixture, value => value % 2 === 0);
-	t.true(result);
+	t.assert.ok(result);
 });
 
 test('pEvery should support concurrency control', async t => {
@@ -56,9 +58,9 @@ test('pEvery should support concurrency control', async t => {
 	let maxConcurrent = 0;
 
 	const fixture = [
-		delay(50, {value: 2}),
-		delay(50, {value: 4}),
-		delay(50, {value: 6}),
+		delay(50, 2),
+		delay(50, 4),
+		delay(50, 6),
 	];
 
 	const result = await pEvery(fixture, value => {
@@ -74,45 +76,43 @@ test('pEvery should support concurrency control', async t => {
 		});
 	}, {concurrency: 1});
 
-	t.true(result);
-	t.is(maxConcurrent, 1, 'Should never run more than 1 test concurrently');
+	t.assert.ok(result);
+	t.assert.strictEqual(maxConcurrent, 1, 'Should never run more than 1 test concurrently');
 });
 
 test('pEvery should handle AbortSignal', async t => {
 	const controller = new AbortController();
 	const fixture = [
-		delay(100, {value: 2}),
-		delay(200, {value: 4}),
+		delay(100, 2),
+		delay(200, 4),
 	];
 
 	setTimeout(() => controller.abort(), 50);
 
-	try {
-		await pEvery(fixture, value => value % 2 === 0, {signal: controller.signal});
-		t.fail('Should have thrown');
-	} catch (error) {
-		t.true(error instanceof DOMException);
-		t.is(error.name, 'AbortError');
-	}
+	const error = await rejectsWith(
+		pEvery(fixture, value => value % 2 === 0, {signal: controller.signal}),
+		DOMException,
+	);
+	t.assert.strictEqual(error.name, 'AbortError');
 });
 
 test('pEvery should return false early when first test fails', async t => {
 	const start = Date.now();
 	const fixture = [
 		Promise.resolve(1), // This will fail the test
-		delay(500, {value: 2}), // This should not be awaited
+		delay(500, 2), // This should not be awaited
 	];
 
 	const result = await pEvery(fixture, value => value % 2 === 0);
 	const duration = Date.now() - start;
 
-	t.false(result);
-	t.true(duration < 500); // Should complete quickly
+	t.assert.ok(!result);
+	t.assert.ok(duration < 500); // Should complete quickly
 });
 
 test('pEvery should return true for empty iterable', async t => {
 	const result = await pEvery([], () => false);
-	t.true(result);
+	t.assert.ok(result);
 });
 
 test('pEvery should reject when test function throws', async t => {
@@ -125,59 +125,56 @@ test('pEvery should reject when test function throws', async t => {
 		throw new Error('Test error');
 	};
 
-	const error = await t.throwsAsync(pEvery(fixture, testFunction));
-	t.is(error.message, 'Test error');
+	const error = await rejectsWith(pEvery(fixture, testFunction), Error);
+	t.assert.strictEqual(error.message, 'Test error');
 });
 
 // Validation tests
 test('pEvery should reject on invalid concurrency: 0', async t => {
-	await t.throwsAsync(
-		pEvery([1, 2], () => true, {concurrency: 0}),
-		{instanceOf: TypeError, message: 'Expected `concurrency` to be Infinity or a finite integer ≥ 1'},
-	);
+	const error = await rejectsWith(pEvery([1, 2], () => true, {concurrency: 0}), TypeError);
+	t.assert.strictEqual(error.message, 'Expected `concurrency` to be Infinity or a finite integer ≥ 1');
 });
 
 test('pEvery should reject on invalid concurrency: 0.5', async t => {
-	await t.throwsAsync(
-		pEvery([1, 2], () => true, {concurrency: 0.5}),
-		{instanceOf: TypeError, message: 'Expected `concurrency` to be Infinity or a finite integer ≥ 1'},
-	);
+	const error = await rejectsWith(pEvery([1, 2], () => true, {concurrency: 0.5}), TypeError);
+	t.assert.strictEqual(error.message, 'Expected `concurrency` to be Infinity or a finite integer ≥ 1');
 });
 
 test('pEvery should reject on invalid concurrency: NaN', async t => {
-	await t.throwsAsync(
-		pEvery([1, 2], () => true, {concurrency: Number.NaN}),
-		{instanceOf: TypeError, message: 'Expected `concurrency` to be Infinity or a finite integer ≥ 1'},
-	);
+	const error = await rejectsWith(pEvery([1, 2], () => true, {concurrency: NaN}), TypeError);
+	t.assert.strictEqual(error.message, 'Expected `concurrency` to be Infinity or a finite integer ≥ 1');
 });
 
 test('pEvery should reject on invalid concurrency: -1', async t => {
-	await t.throwsAsync(
-		pEvery([1, 2], () => true, {concurrency: -1}),
-		{instanceOf: TypeError, message: 'Expected `concurrency` to be Infinity or a finite integer ≥ 1'},
-	);
+	const error = await rejectsWith(pEvery([1, 2], () => true, {concurrency: -1}), TypeError);
+	t.assert.strictEqual(error.message, 'Expected `concurrency` to be Infinity or a finite integer ≥ 1');
 });
 
 test('pEvery should accept valid concurrency: Infinity', async t => {
-	const result = await pEvery([2, 4], x => x % 2 === 0, {concurrency: Number.POSITIVE_INFINITY});
-	t.true(result);
+	const result = await pEvery([2, 4], x => x % 2 === 0, {concurrency: Infinity});
+	t.assert.ok(result);
 });
 
 test('pEvery should accept valid concurrency: 1', async t => {
 	const result = await pEvery([2, 4], x => x % 2 === 0, {concurrency: 1});
-	t.true(result);
+	t.assert.ok(result);
 });
 
 // Error handling tests
 test('pEvery should reject when input promise rejects', async t => {
-	const error = await t.throwsAsync(pEvery([Promise.resolve(2), Promise.reject(new Error('input fail'))], x => x % 2 === 0));
+	const fixture = [
+		Promise.resolve(2),
+		Promise.reject(new Error('input fail')),
+	];
 
-	t.is(error.message, 'input fail');
+	const error = await rejectsWith(pEvery(fixture, x => x % 2 === 0), Error);
+
+	t.assert.strictEqual(error.message, 'input fail');
 });
 
 test('pEvery should return false when test function returns false', async t => {
 	const result = await pEvery([Promise.resolve(1)], x => x % 2 === 0);
-	t.false(result);
+	t.assert.ok(!result);
 });
 
 // Behavioral tests
@@ -188,8 +185,8 @@ test('pEvery should reject for input promise rejections', async t => {
 		Promise.resolve(4),
 	];
 
-	const error = await t.throwsAsync(pEvery(fixture, x => x % 2 === 0));
-	t.is(error.message, 'fail');
+	const error = await rejectsWith(pEvery(fixture, x => x % 2 === 0), Error);
+	t.assert.strictEqual(error.message, 'fail');
 });
 
 test('pEvery should reject when test function throws during processing', async t => {
@@ -198,15 +195,15 @@ test('pEvery should reject when test function throws during processing', async t
 		Promise.resolve(4),
 	];
 
-	const error = await t.throwsAsync(pEvery(fixture, x => {
+	const error = await rejectsWith(pEvery(fixture, x => {
 		if (x === 4) {
 			throw new Error('test error');
 		}
 
 		return x % 2 === 0;
-	}));
+	}), Error);
 
-	t.is(error.message, 'test error');
+	t.assert.strictEqual(error.message, 'test error');
 });
 
 test('pEvery should pass correct input index with concurrency=1', async t => {
@@ -217,8 +214,8 @@ test('pEvery should pass correct input index with concurrency=1', async t => {
 		return true;
 	}, {concurrency: 1});
 
-	t.true(result);
-	t.deepEqual(indices, [
+	t.assert.ok(result);
+	t.assert.deepStrictEqual(indices, [
 		{value: 'a', index: 0},
 		{value: 'b', index: 1},
 		{value: 'c', index: 2},
@@ -234,12 +231,12 @@ test('pEvery should pass correct input index with concurrency=Infinity', async t
 		return true;
 	}, {concurrency: Infinity});
 
-	t.true(result);
+	t.assert.ok(result);
 
 	// Sort by index since they can complete in any order with infinite concurrency
 	indices.sort((a, b) => a.index - b.index);
 
-	t.deepEqual(indices, [
+	t.assert.deepStrictEqual(indices, [
 		{value: 'a', index: 0},
 		{value: 'b', index: 1},
 		{value: 'c', index: 2},
@@ -256,7 +253,7 @@ test('pEvery should work correctly with mixed sync/async values', async t => {
 
 	const result = await pEvery(fixture, x => x % 2 === 0);
 
-	t.true(result);
+	t.assert.ok(result);
 });
 
 // AbortSignal tests
@@ -271,7 +268,7 @@ test('pEvery abort listener should use once:true semantics', async t => {
 		if (type === 'abort') {
 			listenerCount++;
 			// Verify once:true is used
-			t.true(options?.once, 'Should use {once: true} for abort listener');
+			t.assert.ok(options?.once, 'Should use {once: true} for abort listener');
 		}
 
 		return originalAdd.call(this, type, listener, options);
@@ -289,8 +286,8 @@ test('pEvery abort listener should use once:true semantics', async t => {
 		signal: controller.signal,
 	});
 
-	t.true(result);
-	t.is(listenerCount, 0, 'Should cleanup listener after resolution');
+	t.assert.ok(result);
+	t.assert.strictEqual(listenerCount, 0, 'Should cleanup listener after resolution');
 });
 
 test('pEvery abort listener cleanup should work with early false return', async t => {
@@ -320,8 +317,8 @@ test('pEvery abort listener cleanup should work with early false return', async 
 		signal: controller.signal,
 	});
 
-	t.false(result);
-	t.is(listenerCount, 0, 'Should cleanup listener even on early false');
+	t.assert.ok(!result);
+	t.assert.strictEqual(listenerCount, 0, 'Should cleanup listener even on early false');
 });
 
 test('pEvery should cleanup abort listeners when resolved', async t => {
@@ -351,8 +348,8 @@ test('pEvery should cleanup abort listeners when resolved', async t => {
 		signal: controller.signal,
 	});
 
-	t.true(result);
-	t.is(listenerCount, 0, 'Abort listener should be cleaned up after resolution');
+	t.assert.ok(result);
+	t.assert.strictEqual(listenerCount, 0, 'Abort listener should be cleaned up after resolution');
 });
 
 test('pEvery should cleanup abort listeners when returning false', async t => {
@@ -382,8 +379,8 @@ test('pEvery should cleanup abort listeners when returning false', async t => {
 		signal: controller.signal,
 	});
 
-	t.false(result);
-	t.is(listenerCount, 0, 'Abort listener should be cleaned up after returning false');
+	t.assert.ok(!result);
+	t.assert.strictEqual(listenerCount, 0, 'Abort listener should be cleaned up after returning false');
 });
 
 test('pEvery should cleanup abort listeners when test function throws', async t => {
@@ -409,14 +406,14 @@ test('pEvery should cleanup abort listeners when test function throws', async t 
 		return originalRemove.call(this, type, listener);
 	};
 
-	const error = await t.throwsAsync(pEvery([Promise.resolve(1)], () => {
+	const error = await rejectsWith(pEvery([Promise.resolve(1)], () => {
 		throw new Error('test error');
 	}, {
 		signal: controller.signal,
-	}));
+	}), Error);
 
-	t.is(error.message, 'test error');
-	t.is(listenerCount, 0, 'Abort listener should be cleaned up even when test function throws');
+	t.assert.strictEqual(error.message, 'test error');
+	t.assert.strictEqual(listenerCount, 0, 'Abort listener should be cleaned up even when test function throws');
 });
 
 test('pEvery should cleanup abort listeners on success', async t => {
@@ -446,25 +443,22 @@ test('pEvery should cleanup abort listeners on success', async t => {
 		signal: controller.signal,
 	});
 
-	t.true(result);
-	t.is(listenerCount, 0, 'Should cleanup listeners on success');
+	t.assert.ok(result);
+	t.assert.strictEqual(listenerCount, 0, 'Should cleanup listeners on success');
 });
 
 test('pEvery should reject immediately if signal is already aborted', async t => {
 	const controller = new AbortController();
 	controller.abort(); // Abort before calling pEvery
 
-	let workCalled = false;
-	try {
-		await pEvery([Promise.resolve(1)], () => {
-			workCalled = true;
-			return true;
-		}, {signal: controller.signal});
-		t.fail('Should have thrown AbortError');
-	} catch (error) {
-		t.is(error.name, 'AbortError');
-		t.false(workCalled, 'No work should run with already-aborted signal');
-	}
+	let isWorkCalled = false;
+	const error = await rejectsWith(pEvery([Promise.resolve(1)], () => {
+		isWorkCalled = true;
+		return true;
+	}, {signal: controller.signal}), DOMException);
+
+	t.assert.strictEqual(error.name, 'AbortError');
+	t.assert.ok(!isWorkCalled, 'No work should run with already-aborted signal');
 });
 
 test('pEvery should cleanup abort listeners on immediate abort', async t => {
@@ -492,13 +486,9 @@ test('pEvery should cleanup abort listeners on immediate abort', async t => {
 
 	controller.abort(); // Abort immediately
 
-	try {
-		await pEvery([Promise.resolve(1)], () => true, {signal: controller.signal});
-		t.fail('Should have thrown AbortError');
-	} catch (error) {
-		t.is(error.name, 'AbortError');
-	}
+	const error = await rejectsWith(pEvery([Promise.resolve(1)], () => true, {signal: controller.signal}), DOMException);
+	t.assert.strictEqual(error.name, 'AbortError');
 
 	// Note: immediate abort uses fast-path, so no listeners are added
-	t.is(listenerCount, 0, 'Should not leak listeners on immediate abort');
+	t.assert.strictEqual(listenerCount, 0, 'Should not leak listeners on immediate abort');
 });

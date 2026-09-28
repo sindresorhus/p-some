@@ -83,7 +83,7 @@ console.log(first, second);
 */
 export default function pSome<T>(
 	values: Iterable<Value<T>>,
-	options: Options<T>
+	options: Options<T>,
 ): Promise<T[]>;
 
 /**
@@ -109,6 +109,9 @@ console.log(result);
 */
 export function pEvery<T>(
 	input: Iterable<Value<T>>,
+	// eslint-disable-next-line unicorn/consistent-boolean-name -- the parameter name is part of the public API
 	testFunction: (value: T, index: number) => boolean | Promise<boolean>,
-	options?: EveryOptions
+	options?: EveryOptions,
 ): Promise<boolean>;
+
+export {}; // eslint-disable-line unicorn/require-module-specifiers -- It stops the implicit export of the declarations without `export`.
