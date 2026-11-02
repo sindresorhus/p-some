@@ -505,3 +505,45 @@ test('pEvery should cleanup abort listeners on immediate abort', async t => {
 	// Note: immediate abort uses fast-path, so no listeners are added
 	t.assert.strictEqual(listenerCount, 0, 'Should not leak listeners on immediate abort');
 });
+
+// `node:test` fails a test when an unhandled rejection happens while it runs, so these tests wait a bit at the end.
+test('pEvery handles rejected inputs that wait for their turn', async t => {
+	const input = [delay(10, 1), Promise.reject(new Error('later'))];
+	await t.assert.rejects(pEvery(input, () => true, {concurrency: 1}), {message: 'later'});
+	await delay(50);
+});
+
+test('pEvery handles rejected inputs that never get a turn', async t => {
+	const input = [
+		delay(10, 1),
+		delay(20).then(() => {
+			throw new Error('skipped');
+		}),
+	];
+
+	t.assert.strictEqual(await pEvery(input, () => false, {concurrency: 1}), false);
+	await delay(50);
+});
+
+test('pEvery handles rejected inputs when signal is already aborted', async t => {
+	const input = [Promise.reject(new Error('input'))];
+	const error = await rejectsWith(pEvery(input, () => true, {signal: AbortSignal.abort()}), DOMException);
+	t.assert.strictEqual(error.name, 'AbortError');
+	await delay(50);
+});
+
+test('pEvery does not call `then` on Promise subclass inputs that never get a turn', async t => {
+	let thenCallCount = 0;
+
+	class TrackedPromise extends Promise {
+		// eslint-disable-next-line unicorn/no-thenable -- the test counts the calls to `then`
+		then(...arguments_) {
+			thenCallCount++;
+			return super.then(...arguments_);
+		}
+	}
+
+	const input = [TrackedPromise.resolve(1), TrackedPromise.resolve(2)];
+	t.assert.strictEqual(await pEvery(input, () => false, {concurrency: 1}), false);
+	t.assert.strictEqual(thenCallCount, 1);
+});

@@ -561,3 +561,23 @@ test('pSome with filter that always returns false should reject with AggregateEr
 		t.assert.ok(filterError instanceof FilterError);
 	}
 });
+
+// `node:test` fails a test when an unhandled rejection happens while it runs, so these tests wait a bit at the end.
+test('handles rejected inputs when rejecting with RangeError', async t => {
+	const input = [Promise.reject(new Error('input'))];
+	const error = await rejectsWith(pSome(input, {count: 2}), RangeError);
+	t.assert.match(error.message, /at least 2 items/v);
+	await delay(50);
+});
+
+test('handles rejected inputs when signal is already aborted', async t => {
+	const input = [Promise.reject(new Error('input'))];
+	const error = await rejectsWith(pSome(input, {count: 1, signal: AbortSignal.abort()}), DOMException);
+	t.assert.strictEqual(error.name, 'AbortError');
+	await delay(50);
+});
+
+test('works with `null` and `undefined` inputs', async t => {
+	t.assert.deepStrictEqual(await pSome([null, undefined], {count: 2}), [null, undefined]);
+	t.assert.strictEqual(await pEvery([null, undefined], value => value === null || value === undefined), true);
+});

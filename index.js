@@ -25,6 +25,15 @@ function createAbortHandler(signal, isSettled, reject) {
 	};
 }
 
+// Mark each input promise as handled so a rejection is not reported as unhandled when an input is never awaited (early exit, or not yet reached because of `concurrency`). The normal flow still gets the rejection when it awaits the input. Only plain native promises are touched, because calling `then` on a custom thenable or a Promise subclass (for example, `p-lazy`) can start its work.
+function markAsHandled(elements) {
+	for (const element of elements) {
+		if (element?.constructor === Promise) {
+			element.catch(() => {});
+		}
+	}
+}
+
 export function pEvery(iterable, testFunction, options = {}) {
 	return new Promise((resolve, reject) => {
 		const {concurrency = Infinity, signal} = options;
@@ -35,8 +44,9 @@ export function pEvery(iterable, testFunction, options = {}) {
 			return;
 		}
 
-		// eslint-disable-next-line unicorn/no-declarations-before-early-exit -- reading the iterable can abort the signal, so the check below must come after it
+		// Reading the iterable can abort the signal, so the abort check must come after it.
 		const elements = [...iterable];
+		markAsHandled(elements);
 
 		if (signal?.aborted) {
 			try {
@@ -119,8 +129,9 @@ export default function pSome(iterable, options) {
 			return;
 		}
 
-		// eslint-disable-next-line unicorn/no-declarations-before-early-exit -- reading the iterable can abort the signal, so the check below must come after it
+		// Reading the iterable can abort the signal, so the abort check must come after it.
 		const elements = [...iterable];
+		markAsHandled(elements);
 
 		if (signal?.aborted) {
 			try {
