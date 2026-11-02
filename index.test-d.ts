@@ -1,7 +1,27 @@
-import {expectType} from 'tsd';
 import pSome, {pEvery} from './index.js';
 
+declare function expectType<T>(value: T): void;
+
 expectType<Promise<number[]>>(pSome([Promise.resolve(1), Promise.resolve(2)], {count: 1}));
+
+expectType<Promise<Array<string | number>>>(pSome([Promise.resolve(1), Promise.resolve('a')], {
+	count: 2,
+	filter(value) {
+		expectType<string | number>(value);
+		return true;
+	},
+}));
+
+expectType<Promise<number[]>>(pSome<number>([Promise.resolve(1)], {count: 1}));
+expectType<Promise<number[]>>(pSome<Promise<number>>([Promise.resolve(1)], {
+	count: 1,
+	filter(value) {
+		expectType<number>(value);
+		// @ts-expect-error Input promises are awaited before calling the filter.
+		value.then(() => true);
+		return true;
+	},
+}));
 
 expectType<Promise<Array<string | number | boolean>>>(pSome<string | number | boolean>(
 	[Promise.resolve(1), Promise.resolve('a'), Promise.resolve(false)],
@@ -43,6 +63,19 @@ expectType<AggregateError>(aggregateError);
 
 // PEvery type tests
 expectType<Promise<boolean>>(pEvery([Promise.resolve(1), Promise.resolve(2)], value => value > 0));
+
+expectType<Promise<boolean>>(pEvery([Promise.resolve(1), Promise.resolve('a')], value => {
+	expectType<string | number>(value);
+	return true;
+}));
+
+expectType<Promise<boolean>>(pEvery<number>([Promise.resolve(1)], value => value > 0));
+expectType<Promise<boolean>>(pEvery<Promise<number>>([Promise.resolve(1)], value => {
+	expectType<number>(value);
+	// @ts-expect-error Input promises are awaited before calling the test function.
+	value.then(() => true);
+	return true;
+}));
 
 expectType<Promise<boolean>>(pEvery<string | number>([Promise.resolve(1), Promise.resolve('a')], value => {
 	expectType<string | number>(value);

@@ -86,9 +86,9 @@ console.log(first, second);
 ```
 */
 export default function pSome<T>(
-	values: Iterable<Value<T>>,
-	options: Options<T>,
-): Promise<T[]>;
+	values: Iterable<T | PromiseLike<NoInfer<T>>>,
+	options: Options<Awaited<T>>,
+): Promise<Array<Awaited<T>>>;
 
 /**
 Test whether all promises pass a testing function.
@@ -112,9 +112,9 @@ console.log(result);
 ```
 */
 export function pEvery<T>(
-	input: Iterable<Value<T>>,
+	input: Iterable<T | PromiseLike<NoInfer<T>>>,
 	// eslint-disable-next-line unicorn/consistent-boolean-name -- the parameter name is part of the public API
-	testFunction: (value: T, index: number) => boolean | Promise<boolean>,
+	testFunction: (value: Awaited<T>, index: number) => boolean | Promise<boolean>,
 	options?: EveryOptions,
 ): Promise<boolean>;
 
