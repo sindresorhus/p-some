@@ -189,6 +189,18 @@ test('supports async filter functions', async t => {
 	t.assert.deepStrictEqual(result, [4, 5]);
 });
 
+test('async filter completion determines selection and ordering', async () => {
+	const firstFilter = Promise.withResolvers();
+	const filter = value => value === 1 ? firstFilter.promise : true;
+	const input = [Promise.resolve(1), Promise.resolve(2)];
+	const firstResult = pSome(input, {count: 1, filter});
+	const allResults = pSome(input, {count: 2, filter});
+
+	assert.deepEqual(await firstResult, [2]);
+	firstFilter.resolve(true);
+	assert.deepEqual(await allResults, [2, 1]);
+});
+
 test('async filter functions can reject and cause AggregateError', async t => {
 	const input = [1, 2, 3];
 
@@ -581,6 +593,19 @@ test('handles rejected inputs when reading the iterable aborts the signal', asyn
 	};
 
 	await assert.rejects(pSome(iterable, {count: 1, signal: controller.signal}), {name: 'AbortError'});
+	await delay(50);
+});
+
+test('handles rejected inputs when the iterator throws', async () => {
+	const error = new Error('iterator failure');
+	const iterable = {
+		* [Symbol.iterator]() {
+			yield Promise.reject(new Error('input failure'));
+			throw error;
+		},
+	};
+
+	await assert.rejects(pSome(iterable, {count: 1}), error);
 	await delay(50);
 });
 

@@ -23,7 +23,11 @@ export type Options<T> = {
 	readonly count: number;
 
 	/**
-	Used to filter out values that don't satisfy a condition.
+	Receives the value resolved by the promise. Used to filter out values that don't satisfy a condition.
+
+	The filter function can return either a boolean directly or a Promise that resolves to a boolean.
+
+	With an async filter, selection and ordering depend on when filter calls resolve to `true`.
 
 	@param value - The value resolved by the promise.
 
@@ -61,7 +65,7 @@ export type Options<T> = {
 Wait for a specified number of promises to be fulfilled.
 
 @param values - An `Iterable` collection of promises/values to wait for.
-@returns A `Promise` that is fulfilled when `count` promises from `input` are fulfilled. The fulfilled value is an `Array` of the values from the `input` promises in the order they were fulfilled. If it becomes impossible to satisfy `count`, for example, too many promises rejected, it will reject with an `AggregateError`. The promise can be aborted using the `signal` option.
+@returns A `Promise` that is fulfilled when `count` promises from `input` are fulfilled and their values pass `filter`. The fulfilled value is an `Array` of those values in the order they pass `filter`. If it becomes impossible to satisfy `count`, for example, too many promises rejected or too few values pass `filter`, it will reject with an `AggregateError`. The promise can be aborted using the `signal` option.
 
 @example
 ```

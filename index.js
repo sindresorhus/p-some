@@ -25,13 +25,19 @@ function createAbortHandler(signal, isSettled, reject) {
 	};
 }
 
-// Mark each input promise as handled so a rejection is not reported as unhandled when an input is never awaited (early exit, or not yet reached because of `concurrency`). The normal flow still gets the rejection when it awaits the input. Only plain native promises are touched, because calling `then` on a custom thenable or a Promise subclass (for example, `p-lazy`) can start its work.
-function markAsHandled(elements) {
-	for (const element of elements) {
+// Collect inputs and mark each promise as handled before advancing the iterator, so a rejection is not reported as unhandled when iteration throws or an input is never awaited (early exit, or not yet reached because of `concurrency`). The normal flow still gets the rejection when it awaits the input. Only plain native promises are touched, because calling `then` on a custom thenable or a Promise subclass (for example, `p-lazy`) can start its work.
+function collectElements(iterable) {
+	const elements = [];
+
+	for (const element of iterable) {
 		if (element?.constructor === Promise) {
 			element.catch(() => {});
 		}
+
+		elements.push(element);
 	}
+
+	return elements;
 }
 
 export function pEvery(iterable, testFunction, options = {}) {
@@ -46,8 +52,7 @@ export function pEvery(iterable, testFunction, options = {}) {
 
 		signal?.throwIfAborted();
 
-		const elements = [...iterable];
-		markAsHandled(elements);
+		const elements = collectElements(iterable);
 
 		// Reading the iterable can abort the signal, so check again afterward.
 		signal?.throwIfAborted();
@@ -125,8 +130,7 @@ export default function pSome(iterable, options) {
 
 		signal?.throwIfAborted();
 
-		const elements = [...iterable];
-		markAsHandled(elements);
+		const elements = collectElements(iterable);
 
 		// Reading the iterable can abort the signal, so check again afterward.
 		signal?.throwIfAborted();

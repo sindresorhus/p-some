@@ -539,6 +539,19 @@ test('pEvery handles rejected inputs when reading the iterable aborts the signal
 	await delay(50);
 });
 
+test('pEvery handles rejected inputs when the iterator throws', async () => {
+	const error = new Error('iterator failure');
+	const iterable = {
+		* [Symbol.iterator]() {
+			yield Promise.reject(new Error('input failure'));
+			throw error;
+		},
+	};
+
+	await assert.rejects(pEvery(iterable, () => true), error);
+	await delay(50);
+});
+
 test('pEvery does not read the iterable when signal is already aborted', async () => {
 	let isIterated = false;
 	const iterable = {
