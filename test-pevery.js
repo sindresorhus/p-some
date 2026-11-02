@@ -1,5 +1,6 @@
 /* eslint-disable node-test/no-conditional-assertion -- the abort-listener assertion runs inside the patched `addEventListener` callback, so it cannot be hoisted out */
 import test from 'node:test';
+import assert from 'node:assert/strict';
 import {setTimeout as delay} from 'node:timers/promises';
 import {rejectsWith} from './helpers.js';
 import {pEvery} from './index.js';
@@ -525,11 +526,31 @@ test('pEvery handles rejected inputs that never get a turn', async t => {
 	await delay(50);
 });
 
-test('pEvery handles rejected inputs when signal is already aborted', async t => {
-	const input = [Promise.reject(new Error('input'))];
-	const error = await rejectsWith(pEvery(input, () => true, {signal: AbortSignal.abort()}), DOMException);
-	t.assert.strictEqual(error.name, 'AbortError');
+test('pEvery handles rejected inputs when reading the iterable aborts the signal', async () => {
+	const controller = new AbortController();
+	const iterable = {
+		* [Symbol.iterator]() {
+			controller.abort();
+			yield Promise.reject(new Error('input'));
+		},
+	};
+
+	await assert.rejects(pEvery(iterable, () => true, {signal: controller.signal}), {name: 'AbortError'});
 	await delay(50);
+});
+
+test('pEvery does not read the iterable when signal is already aborted', async () => {
+	let isIterated = false;
+	const iterable = {
+		* [Symbol.iterator]() {
+			isIterated = true;
+			yield 1;
+		},
+	};
+	const reason = new Error('cancelled');
+
+	await assert.rejects(pEvery(iterable, () => true, {signal: AbortSignal.abort(reason)}), reason);
+	assert.equal(isIterated, false);
 });
 
 test('pEvery does not call `then` on Promise subclass inputs that never get a turn', async t => {

@@ -44,19 +44,13 @@ export function pEvery(iterable, testFunction, options = {}) {
 			return;
 		}
 
-		// Reading the iterable can abort the signal, so the abort check must come after it.
+		signal?.throwIfAborted();
+
 		const elements = [...iterable];
 		markAsHandled(elements);
 
-		if (signal?.aborted) {
-			try {
-				signal.throwIfAborted();
-			} catch (error) {
-				reject(error);
-			}
-
-			return;
-		}
+		// Reading the iterable can abort the signal, so check again afterward.
+		signal?.throwIfAborted();
 
 		if (elements.length === 0) {
 			resolve(true);
@@ -129,19 +123,13 @@ export default function pSome(iterable, options) {
 			return;
 		}
 
-		// Reading the iterable can abort the signal, so the abort check must come after it.
+		signal?.throwIfAborted();
+
 		const elements = [...iterable];
 		markAsHandled(elements);
 
-		if (signal?.aborted) {
-			try {
-				signal.throwIfAborted();
-			} catch (error) {
-				reject(error);
-			}
-
-			return;
-		}
+		// Reading the iterable can abort the signal, so check again afterward.
+		signal?.throwIfAborted();
 
 		// Early bounds check
 		if (count > elements.length) {

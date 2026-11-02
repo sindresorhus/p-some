@@ -1,5 +1,6 @@
 /* eslint-disable node-test/no-conditional-assertion -- the abort-listener assertion runs inside the patched `addEventListener` callback and the last test asserts each collected error individually, so neither can be hoisted out */
 import test from 'node:test';
+import assert from 'node:assert/strict';
 import {setTimeout as delay} from 'node:timers/promises';
 import {rejectsWith} from './helpers.js';
 import pSome, {pEvery, FilterError} from './index.js';
@@ -570,11 +571,31 @@ test('handles rejected inputs when rejecting with RangeError', async t => {
 	await delay(50);
 });
 
-test('handles rejected inputs when signal is already aborted', async t => {
-	const input = [Promise.reject(new Error('input'))];
-	const error = await rejectsWith(pSome(input, {count: 1, signal: AbortSignal.abort()}), DOMException);
-	t.assert.strictEqual(error.name, 'AbortError');
+test('handles rejected inputs when reading the iterable aborts the signal', async () => {
+	const controller = new AbortController();
+	const iterable = {
+		* [Symbol.iterator]() {
+			controller.abort();
+			yield Promise.reject(new Error('input'));
+		},
+	};
+
+	await assert.rejects(pSome(iterable, {count: 1, signal: controller.signal}), {name: 'AbortError'});
 	await delay(50);
+});
+
+test('does not read the iterable when signal is already aborted', async () => {
+	let isIterated = false;
+	const iterable = {
+		* [Symbol.iterator]() {
+			isIterated = true;
+			yield 1;
+		},
+	};
+	const reason = new Error('cancelled');
+
+	await assert.rejects(pSome(iterable, {count: 1, signal: AbortSignal.abort(reason)}), reason);
+	assert.equal(isIterated, false);
 });
 
 test('works with `null` and `undefined` inputs', async t => {
