@@ -35,6 +35,9 @@ export function pEvery(iterable, testFunction, options = {}) {
 			return;
 		}
 
+		// eslint-disable-next-line unicorn/no-declarations-before-early-exit -- reading the iterable can abort the signal, so the check below must come after it
+		const elements = [...iterable];
+
 		if (signal?.aborted) {
 			try {
 				signal.throwIfAborted();
@@ -44,8 +47,6 @@ export function pEvery(iterable, testFunction, options = {}) {
 
 			return;
 		}
-
-		const elements = [...iterable];
 
 		if (elements.length === 0) {
 			resolve(true);
@@ -118,6 +119,9 @@ export default function pSome(iterable, options) {
 			return;
 		}
 
+		// eslint-disable-next-line unicorn/no-declarations-before-early-exit -- reading the iterable can abort the signal, so the check below must come after it
+		const elements = [...iterable];
+
 		if (signal?.aborted) {
 			try {
 				signal.throwIfAborted();
@@ -129,7 +133,6 @@ export default function pSome(iterable, options) {
 		}
 
 		// Early bounds check
-		const elements = [...iterable];
 		if (count > elements.length) {
 			reject(new RangeError(`Expected input to contain at least ${count} items, but contains ${elements.length} items`));
 			return;

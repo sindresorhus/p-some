@@ -96,6 +96,19 @@ test('pEvery should handle AbortSignal', async t => {
 	t.assert.strictEqual(error.name, 'AbortError');
 });
 
+test('pEvery rejects if signal is aborted while reading the iterable', {timeout: 1000}, async t => {
+	const controller = new AbortController();
+	const iterable = {
+		* [Symbol.iterator]() {
+			controller.abort();
+			yield new Promise(() => {});
+		},
+	};
+
+	const error = await rejectsWith(pEvery(iterable, () => true, {signal: controller.signal}), DOMException);
+	t.assert.strictEqual(error.name, 'AbortError');
+});
+
 test('pEvery should return false early when first test fails', async t => {
 	const start = Date.now();
 	const fixture = [

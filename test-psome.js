@@ -23,6 +23,19 @@ test('rejects immediately if signal is already aborted', async t => {
 	t.assert.ok(!isWorkCalled, 'No work should run with already-aborted signal');
 });
 
+test('rejects if signal is aborted while reading the iterable', {timeout: 1000}, async t => {
+	const controller = new AbortController();
+	const iterable = {
+		* [Symbol.iterator]() {
+			controller.abort();
+			yield new Promise(() => {});
+		},
+	};
+
+	const error = await rejectsWith(pSome(iterable, {count: 1, signal: controller.signal}), DOMException);
+	t.assert.strictEqual(error.name, 'AbortError');
+});
+
 test('returns an array of values', async t => {
 	const result = await pSome([
 		Promise.resolve(1),
